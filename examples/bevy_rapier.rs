@@ -18,12 +18,11 @@ fn main() {
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_editor_pls::EditorPlugin)
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(10.0))
+        .add_plugin(RapierDebugRenderPlugin::default())
         .add_startup_system(setup_graphics)
         .add_startup_system(setup_physics)
-        .add_system_to_stage(CoreStage::PostUpdate, symplectic_euler)
         .add_system(spring_impulse)
-        .register_type::<Impulse>()
-        .register_type::<Velocity>()
         .register_type::<SpringSettings>()
         .run();
 }
@@ -48,7 +47,7 @@ pub fn spring_impulse(
     time: Res<Time>,
     mut impulses: Query<&mut ExternalImpulse>,
     springs: Query<(Entity, &SpringSettings, &Spring)>,
-    particle: Query<RapierParticleQuery>,
+    particle: Query<springy::RapierParticleQuery>,
 ) {
     if time.delta_seconds() == 0.0 {
         return;
@@ -56,12 +55,10 @@ pub fn spring_impulse(
 
     let timestep = TICK_RATE;
 
-    for (spring_entity, spring_transform, spring_velocity, spring_mass, spring_settings, spring) in
-        &springs
-    {
+    for (spring_entity, spring_settings, spring) in &springs {
         let particle_entity = spring.containing;
-        let (particle_transform, particle_velocity, particle_mass) =
-            particle.get(particle_entity).unwrap();
+        let particle_a = particle.get(spring_entity).unwrap();
+        let particle_b = particle.get(particle_entity).unwrap();
 
         if particle_entity == spring_entity {
             continue;
@@ -69,24 +66,16 @@ pub fn spring_impulse(
 
         let impulse = spring_settings.0.impulse(
             timestep,
-            springy::Particle {
-                mass: spring_mass.0,
-                position: spring_transform.translation(),
-                velocity: spring_velocity.0,
-            },
-            springy::Particle {
-                mass: particle_mass.0,
-                position: particle_transform.translation(),
-                velocity: particle_velocity.0,
-            },
+            particle_a.into_particle(),
+            particle_b.into_particle(),
         );
 
         let [mut spring_impulse, mut particle_impulse] = impulses
             .get_many_mut([spring_entity, particle_entity])
             .unwrap();
 
-        spring_impulse.0 -= impulse;
-        particle_impulse.0 += impulse;
+        spring_impulse.impulse = -impulse;
+        particle_impulse.impulse = impulse;
     }
 }
 
@@ -132,7 +121,13 @@ pub fn setup_physics(mut commands: Commands) {
             ..default()
         })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
-        .insert_bundle((Velocity::default(), Impulse::default(), Mass::default()))
+        .insert_bundle((
+            RigidBody::Dynamic,
+            Velocity::default(),
+            ExternalImpulse::default(),
+            ReadMassProperties::default(),
+            Collider::cuboid(size / 2.0, size / 2.0),
+        ))
         .insert(Name::new("Cube 1"))
         .id();
 
@@ -151,18 +146,22 @@ pub fn setup_physics(mut commands: Commands) {
             damping: 1.0,
         }))
         .insert_bundle((
+            //RigidBody::Dynamic,
             Velocity::default(),
             ExternalImpulse::default(),
             ReadMassProperties::default(),
+            //Collider::cuboid(size, size),
         ))
         .insert(Name::new("Cube Slot"));
 
     commands
         .spawn_bundle(TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)))
         .insert_bundle((
-            ReadMassProperties::default(),
+            RigidBody::Dynamic,
             Velocity::default(),
             ExternalImpulse::default(),
+            ReadMassProperties::default(),
+            Collider::cuboid(size / 2.0, size / 2.0),
         ))
         .insert(Name::new("Cube 2"));
 }

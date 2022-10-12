@@ -1,13 +1,15 @@
 use bevy::prelude::*;
 
 pub mod prelude {
-    pub use super::{Particle, Spring};
     #[cfg(any(feature = "rapier2d", feature = "rapier3d"))]
-    pub use rapier::RapierParticleQuery;
+    pub use crate::rapier::RapierParticleQuery;
+    pub use crate::{Particle, Spring};
 }
 
 #[cfg(any(feature = "rapier2d", feature = "rapier3d"))]
 pub mod rapier;
+#[cfg(any(feature = "rapier2d", feature = "rapier3d"))]
+pub use rapier::RapierParticleQuery;
 
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]

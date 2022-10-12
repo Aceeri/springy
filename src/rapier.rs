@@ -1,7 +1,11 @@
+use bevy::prelude::*;
 #[cfg(feature = "rapier2d")]
 use bevy_rapier2d::prelude::*;
 #[cfg(feature = "rapier3d")]
 use bevy_rapier3d::prelude::*;
+
+use bevy::ecs::query::WorldQuery;
+use bevy::math::Vec3Swizzles;
 
 #[derive(WorldQuery)]
 pub struct RapierParticleQuery<'a> {
@@ -16,12 +20,15 @@ pub type Unit = Vec2;
 #[cfg(feature = "rapier3d")]
 pub type Unit = Vec3;
 
-impl<'a> RapierParticleQueryItem<'a> {
+impl<'w, 's> RapierParticleQueryItem<'w, 's> {
     pub fn into_particle(&self) -> crate::Particle<Unit> {
         let velocity = match self.velocity {
-            Some(velocity) => velocity,
+            Some(velocity) => *velocity,
             None => match self.rigid_body {
-                Some(rigid_body @ RigidBody::Dynamic | RigidBody::KinematicVelocityBased) => {
+                Some(
+                    rigid_body @ RigidBody::Dynamic
+                    | rigid_body @ RigidBody::KinematicVelocityBased,
+                ) => {
                     warn!(
                         "{:?} rigidbody needs a `Velocity` component for spring damping",
                         rigid_body
@@ -47,7 +54,7 @@ impl<'a> RapierParticleQueryItem<'a> {
             _ => 1.0,
         };
 
-        Particle {
+        crate::Particle {
             #[cfg(feature = "rapier3d")]
             position: self.global_transform.translation(),
             #[cfg(feature = "rapier2d")]
