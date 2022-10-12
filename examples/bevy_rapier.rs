@@ -64,11 +64,7 @@ pub fn spring_impulse(
             continue;
         }
 
-        let impulse = spring_settings.0.impulse(
-            timestep,
-            particle_a.into_particle(),
-            particle_b.into_particle(),
-        );
+        let impulse = spring_settings.0.impulse(timestep, particle_a, particle_b);
 
         let [mut spring_impulse, mut particle_impulse] = impulses
             .get_many_mut([spring_entity, particle_entity])

@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_inspector_egui::Inspectable;
 
 pub mod prelude {
     #[cfg(any(feature = "rapier2d", feature = "rapier3d"))]
@@ -11,19 +12,23 @@ pub mod rapier;
 #[cfg(any(feature = "rapier2d", feature = "rapier3d"))]
 pub use rapier::RapierParticleQuery;
 
-#[derive(Default, Debug, Copy, Clone, Component, Reflect)]
+#[derive(Default, Debug, Copy, Clone, Component, Reflect, Inspectable)]
 #[reflect(Component)]
 pub struct Spring {
     /// Strength of the spring-like impulse. This is a range between 0 and 1
     /// where 1 will bring the spring to equilibrium in 1 timestep.
+    #[inspectable(min = 0.0, max = 1.0)]
     pub strength: f32,
     /// Damping of the spring-like impulse. This is a range between 0 and 1
     /// where 1 will bring the spring to equilibrium in 1 timestep.
+    #[inspectable(min = 0.0, max = 1.0)]
     pub damping: f32,
     /// Rest distance around the particle, it will try to push the particle out
     /// when too close.
+    #[inspectable(min = 0.0)]
     pub rest_distance: f32,
     /// Similar to rest distance except it will not push outwards if it is too close.
+    #[inspectable(min = 0.0)]
     pub limp_distance: f32,
 }
 
@@ -107,10 +112,18 @@ impl Spring {
     /// This makes assumptions that the integrator for your physics is symplectic Euler.
     /// This allows us to make the spring stable with any provided user inputs by constraining
     /// the spring strength to the `reduced mass / timestep` and the damping to `reduced_mass`.
-    pub fn impulse<S>(&self, timestep: f32, particle_a: Particle<S>, particle_b: Particle<S>) -> S
+    pub fn impulse<S>(
+        &self,
+        timestep: f32,
+        particle_a: impl Into<Particle<S>>,
+        particle_b: impl Into<Particle<S>>,
+    ) -> S
     where
         S: Springable,
     {
+        let particle_a = particle_a.into();
+        let particle_b = particle_b.into();
+
         let inverse_timestep = 1.0 / timestep;
 
         let distance = particle_b.position() - particle_a.position();

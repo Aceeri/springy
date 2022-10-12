@@ -4,6 +4,8 @@ use bevy_rapier2d::prelude::*;
 #[cfg(feature = "rapier3d")]
 use bevy_rapier3d::prelude::*;
 
+use crate::Particle;
+
 use bevy::ecs::query::WorldQuery;
 use bevy::math::Vec3Swizzles;
 
@@ -20,8 +22,14 @@ pub type Unit = Vec2;
 #[cfg(feature = "rapier3d")]
 pub type Unit = Vec3;
 
+impl<'w, 's> Into<Particle<Unit>> for RapierParticleQueryItem<'w, 's> {
+    fn into(self) -> Particle<Unit> {
+        self.into_particle()
+    }
+}
+
 impl<'w, 's> RapierParticleQueryItem<'w, 's> {
-    pub fn into_particle(&self) -> crate::Particle<Unit> {
+    pub fn into_particle(&self) -> Particle<Unit> {
         let velocity = match self.velocity {
             Some(velocity) => *velocity,
             None => match self.rigid_body {
@@ -54,7 +62,7 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
             _ => 1.0,
         };
 
-        crate::Particle {
+        Particle {
             #[cfg(feature = "rapier3d")]
             position: self.global_transform.translation(),
             #[cfg(feature = "rapier2d")]
