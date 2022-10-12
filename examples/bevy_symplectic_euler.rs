@@ -1,3 +1,4 @@
+use bevy::math::Vec3Swizzles;
 use bevy::{prelude::*, window::PresentMode};
 use bevy_rapier2d::prelude::*;
 
@@ -41,63 +42,37 @@ pub struct Spring {
 
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
-pub struct SpringSettings {
-    /// Strength of the spring-like impulse. This is a range between 0 and 1
-    /// where 1 will bring the spring to equilibrium in 1 timestep.
-    pub strength: f32,
-    /// Damping of the spring-like impulse. This is a range between 0 and 1
-    /// where 1 will bring the spring to equilibrium in 1 timestep.
-    pub damping: f32,
-    /// Rest distance around the particle, it will try to push the particle out
-    /// when too close.
-    pub rest_distance: f32,
-    /// Similar to rest distance except it will not push outwards if it is too close.
-    pub limp_distance: f32,
-}
+pub struct SpringSettings(springy::Spring);
 
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
-pub struct Velocity {
-    pub linvel: Vec2,
-}
+pub struct Velocity(Vec2);
 
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
-pub struct Impulse {
-    pub impulse: Vec2,
-}
+pub struct Impulse(Vec2);
 
 #[derive(Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
-pub struct Mass {
-    mass: f32,
-    inverse_mass: f32,
-}
-
-impl Mass {
-    pub fn new(mass: f32) -> Mass {
-        let inverse = if mass == 0.0 { 0.0 } else { 1.0 / mass };
-        Mass {
-            mass: mass,
-            inverse_mass: inverse,
-        }
-    }
-
-    pub fn mass(&self) -> f32 {
-        self.mass
-    }
-
-    pub fn inverse_mass(&self) -> f32 {
-        self.inverse_mass
-    }
-}
+pub struct Mass(f32);
 
 impl Default for Mass {
     fn default() -> Self {
-        Self::new(1.0)
+        Self(1.0)
     }
 }
 
+impl Mass {
+    pub fn inverse_mass(&self) -> f32 {
+        if self.0 != 0.0 {
+            1.0 / self.0
+        } else {
+            0.0
+        }
+    }
+}
+
+/// Basic symplectic euler integration of the impulse/velocity/position.
 pub fn symplectic_euler(
     time: Res<Time>,
     mut to_integrate: Query<(&mut Transform, &mut Velocity, &mut Impulse, &Mass)>,
@@ -107,9 +82,9 @@ pub fn symplectic_euler(
     }
 
     for (mut position, mut velocity, mut impulse, mass) in &mut to_integrate {
-        velocity.linvel += impulse.impulse * mass.inverse_mass();
-        position.translation += Vec3::new(velocity.linvel.x, velocity.linvel.y, 0.0) * TICK_RATE;
-        impulse.impulse = Vec2::ZERO;
+        velocity.0 += impulse.0 * mass.inverse_mass();
+        position.translation += velocity.0.extend(0.0) * TICK_RATE;
+        impulse.0 = Vec2::ZERO;
     }
 }
 
@@ -131,7 +106,6 @@ pub fn spring_impulse(
     }
 
     let timestep = TICK_RATE;
-    let inverse_timestep = 1.0 / timestep;
 
     for (spring_entity, spring_transform, spring_velocity, spring_mass, spring_settings, spring) in
         &springs
@@ -144,36 +118,26 @@ pub fn spring_impulse(
             continue;
         }
 
-        let strength = spring_settings.strength;
-        let damping = spring_settings.damping;
-        let rest_distance = spring_settings.rest_distance;
-        let limp_distance = spring_settings.limp_distance;
-
-        let distance = particle_transform.translation() - spring_transform.translation();
-        let distance = Vec2::new(distance.x, distance.y);
-        let velocity = particle_velocity.linvel - spring_velocity.linvel;
-
-        let unit_vector = distance.normalize_or_zero();
-        let distance_error = if limp_distance > distance.length() {
-            0.0
-        } else {
-            unit_vector.dot(distance) - rest_distance
-        };
-        let distance_error = distance_error * unit_vector;
-        let velocity_error = velocity;
-
-        let reduced_mass = 1.0 / (spring_mass.inverse_mass() + particle_mass.inverse_mass());
-
-        let distance_impulse = strength * distance_error * inverse_timestep * reduced_mass;
-        let velocity_impulse = damping * velocity_error * reduced_mass;
-
-        let impulse = -(distance_impulse + velocity_impulse);
+        let impulse = spring_settings.0.impulse(
+            timestep,
+            springy::Particle {
+                mass: spring_mass.0,
+                position: spring_transform.translation(),
+                velocity: spring_velocity.0.extend(0.0),
+            },
+            springy::Particle {
+                mass: particle_mass.0,
+                position: particle_transform.translation(),
+                velocity: particle_velocity.0.extend(0.0),
+            },
+        );
 
         let [mut spring_impulse, mut particle_impulse] = impulses
             .get_many_mut([spring_entity, particle_entity])
             .unwrap();
-        spring_impulse.impulse -= impulse;
-        particle_impulse.impulse += impulse;
+
+        spring_impulse.0 -= impulse.xy();
+        particle_impulse.0 += impulse.xy();
     }
 }
 
@@ -231,13 +195,13 @@ pub fn setup_physics(mut commands: Commands) {
         })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
         .insert(Spring { containing: cube_1 })
-        .insert(SpringSettings {
+        .insert(SpringSettings(springy::Spring {
             rest_distance: 5.0,
             limp_distance: 5.0,
             strength: 1.0,
             damping: 1.0,
-        })
-        .insert_bundle((Velocity::default(), Impulse::default(), Mass::new(0.0)))
+        }))
+        .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
         .insert(Name::new("Cube Slot"));
 
     commands

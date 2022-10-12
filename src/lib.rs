@@ -1,5 +1,9 @@
 use bevy::prelude::*;
 
+pub mod prelude {
+    pub use super::{Particle, Spring};
+}
+
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
 pub struct Spring {
@@ -28,8 +32,8 @@ pub struct Particle {
 
 impl Particle {
     pub fn inverse_mass(&self) -> f32 {
-        if mass != 0.0 {
-            1.0 / mass
+        if self.mass != 0.0 {
+            1.0 / self.mass
         } else {
             0.0
         }
@@ -50,7 +54,9 @@ impl Spring {
     /// This makes assumptions that the integrator for your physics is symplectic Euler.
     /// This allows us to make the spring stable with any provided user inputs by constraining
     /// the spring strength to the `reduced mass / timestep` and the damping to `reduced_mass`.
-    pub fn impulse(&self, particle_a: Particle, particle_b: Particle) -> Vec3 {
+    pub fn impulse(&self, timestep: f32, particle_a: Particle, particle_b: Particle) -> Vec3 {
+        let inverse_timestep = 1.0 / timestep;
+
         let distance = particle_b.position() - particle_a.position();
         let velocity = particle_b.velocity() - particle_a.velocity();
 
@@ -66,8 +72,8 @@ impl Spring {
 
         let reduced_mass = 1.0 / (particle_a.inverse_mass() + particle_b.inverse_mass());
 
-        let distance_impulse = strength * distance_error * inverse_timestep * reduced_mass;
-        let velocity_impulse = damping * velocity_error * reduced_mass;
+        let distance_impulse = self.strength * distance_error * inverse_timestep * reduced_mass;
+        let velocity_impulse = self.damping * velocity_error * reduced_mass;
 
         let impulse = -(distance_impulse + velocity_impulse);
         impulse

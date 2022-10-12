@@ -1,3 +1,4 @@
+use bevy::math::Vec3Swizzles;
 use bevy::{prelude::*, window::PresentMode};
 use bevy_rapier2d::prelude::*;
 
@@ -14,20 +15,16 @@ fn main() {
             present_mode: PresentMode::AutoVsync,
             ..default()
         })
-        .insert_resource(RapierConfiguration {
-            timestep_mode: TimestepMode,
-            ..default()
-        })
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_editor_pls::EditorPlugin)
-        .add_plugin(RapierPhysicsPlugin)
-        .add_plugin(RapierDebugRenderPlugin)
         .add_startup_system(setup_graphics)
         .add_startup_system(setup_physics)
         .add_system_to_stage(CoreStage::PostUpdate, symplectic_euler)
         .add_system(spring_impulse)
-        .register_type::<Spring>()
+        .register_type::<Impulse>()
+        .register_type::<Velocity>()
+        .register_type::<SpringSettings>()
         .run();
 }
 
@@ -39,15 +36,18 @@ fn setup_graphics(mut commands: Commands) {
 }
 
 #[derive(Debug, Copy, Clone, Component)]
-pub struct Attached {
-    pub attached: Entity,
-    pub spring: Spring,
+pub struct Spring {
+    pub containing: Entity,
 }
+
+#[derive(Default, Debug, Copy, Clone, Component, Reflect)]
+#[reflect(Component)]
+pub struct SpringSettings(springy::Spring);
 
 pub fn spring_impulse(
     time: Res<Time>,
-    mut impulses: Query<Option<&mut ExternalImpulse>>,
-    attached: Query<(Entity, &Attached)>,
+    mut impulses: Query<&mut ExternalImpulse>,
+    springs: Query<(Entity, &SpringSettings, &Spring)>,
     particle: Query<(&GlobalTransform, &Velocity, &ReadMassProperties)>,
 ) {
     if time.delta_seconds() == 0.0 {
@@ -55,7 +55,6 @@ pub fn spring_impulse(
     }
 
     let timestep = TICK_RATE;
-    let inverse_timestep = 1.0 / timestep;
 
     for (spring_entity, spring_transform, spring_velocity, spring_mass, spring_settings, spring) in
         &springs
@@ -68,36 +67,26 @@ pub fn spring_impulse(
             continue;
         }
 
-        let strength = spring_settings.strength;
-        let damping = spring_settings.damping;
-        let rest_distance = spring_settings.rest_distance;
-        let limp_distance = spring_settings.limp_distance;
-
-        let distance = particle_transform.translation() - spring_transform.translation();
-        let distance = Vec2::new(distance.x, distance.y);
-        let velocity = particle_velocity.linvel - spring_velocity.linvel;
-
-        let unit_vector = distance.normalize_or_zero();
-        let distance_error = if limp_distance > distance.length() {
-            0.0
-        } else {
-            unit_vector.dot(distance) - rest_distance
-        };
-        let distance_error = distance_error * unit_vector;
-        let velocity_error = velocity;
-
-        let reduced_mass = 1.0 / (spring_mass.inverse_mass() + particle_mass.inverse_mass());
-
-        let distance_impulse = strength * distance_error * inverse_timestep * reduced_mass;
-        let velocity_impulse = damping * velocity_error * reduced_mass;
-
-        let impulse = -(distance_impulse + velocity_impulse);
+        let impulse = spring_settings.0.impulse(
+            timestep,
+            springy::Particle {
+                mass: spring_mass.0,
+                position: spring_transform.translation(),
+                velocity: spring_velocity.0.extend(0.0),
+            },
+            springy::Particle {
+                mass: particle_mass.0,
+                position: particle_transform.translation(),
+                velocity: particle_velocity.0.extend(0.0),
+            },
+        );
 
         let [mut spring_impulse, mut particle_impulse] = impulses
             .get_many_mut([spring_entity, particle_entity])
             .unwrap();
-        spring_impulse.impulse -= impulse;
-        particle_impulse.impulse += impulse;
+
+        spring_impulse.0 -= impulse.xy();
+        particle_impulse.0 += impulse.xy();
     }
 }
 
@@ -155,13 +144,13 @@ pub fn setup_physics(mut commands: Commands) {
         })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
         .insert(Spring { containing: cube_1 })
-        .insert(SpringSettings {
+        .insert(SpringSettings(springy::Spring {
             rest_distance: 5.0,
             limp_distance: 5.0,
             strength: 1.0,
             damping: 1.0,
-        })
-        .insert_bundle((Velocity::default(), Impulse::default(), Mass::new(0.0)))
+        }))
+        .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
         .insert(Name::new("Cube Slot"));
 
     commands
