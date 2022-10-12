@@ -28,7 +28,7 @@ opt-level = 3
 [[example]]
 name = "rapier"
 path = "examples/bevy_rapier.rs"
-required_features = ["rapier2d"]
+required-features = ["rapier2d"]
 
 [[example]]
 name = "bevy_simple"

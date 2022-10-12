@@ -113,7 +113,10 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
     pub fn impulse_particle(&self) -> Particle<Unit> {
         let velocity = self.velocity();
         #[cfg(feature = "rapier2d")]
-        let linvel = velocity.linvel;
+        let linvel = velocity.linvel
+            + velocity
+                .angvel
+                .perp_dot(Unit::ZERO - self.local_center_of_mass());
         #[cfg(feature = "rapier3d")]
         let linvel = velocity.linvel
             + velocity
