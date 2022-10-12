@@ -24,13 +24,13 @@ pub type Unit = Vec3;
 
 impl<'w, 's> Into<Particle<Unit>> for RapierParticleQueryItem<'w, 's> {
     fn into(self) -> Particle<Unit> {
-        self.into_particle()
+        self.impulse_particle()
     }
 }
 
 impl<'w, 's> RapierParticleQueryItem<'w, 's> {
-    pub fn into_particle(&self) -> Particle<Unit> {
-        let velocity = match self.velocity {
+    pub fn velocity(&self) -> Velocity {
+        match self.velocity {
             Some(velocity) => *velocity,
             None => match self.rigid_body {
                 Some(
@@ -45,9 +45,11 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
                 }
                 _ => Velocity::default(),
             },
-        };
+        }
+    }
 
-        let mass = match self.rigid_body {
+    pub fn mass(&self) -> f32 {
+        match self.rigid_body {
             Some(rigid_body @ RigidBody::Dynamic) => match self.mass {
                 Some(mass) => mass.0.mass,
                 _ => {
@@ -60,16 +62,52 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
             },
             Some(_) => f32::INFINITY,
             _ => 1.0,
-        };
+        }
+    }
 
+    pub fn local_center_of_mass(&self) -> Unit {
+        match self.mass {
+            Some(mass) => mass.0.local_center_of_mass,
+            _ => {
+                warn!(
+                    "Rigidbody needs a `ReadMassProperties` component for accurate spring calculations",
+                );
+                Unit::ZERO
+            }
+        }
+    }
+    /*
+
+    pub fn angular_particle(&self) -> Particle<Unit> {
+        let velocity = self.velocity();
+        Particle {
+            #[cfg(feature = "rapier3d")]
+            position: self.global_transform.rotation(),
+            #[cfg(feature = "rapier2d")]
+            position: self.global_transform.rotation().xy(),
+
+            velocity: linvel,
+            mass: self.mass(),
+        }
+    } */
+
+    pub fn impulse_particle(&self) -> Particle<Unit> {
+        let velocity = self.velocity();
+        #[cfg(feature = "rapier2d")]
+        let linvel = velocity.linvel;
+        #[cfg(feature = "rapier3d")]
+        let linvel = velocity.linvel
+            + velocity
+                .angvel
+                .cross(Unit::ZERO - self.local_center_of_mass());
         Particle {
             #[cfg(feature = "rapier3d")]
             position: self.global_transform.translation(),
             #[cfg(feature = "rapier2d")]
             position: self.global_transform.translation().xy(),
 
-            velocity: velocity.linvel,
-            mass: mass,
+            velocity: linvel,
+            mass: self.mass(),
         }
     }
 }
