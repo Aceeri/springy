@@ -72,12 +72,12 @@ pub fn spring_impulse(
             springy::Particle {
                 mass: spring_mass.0,
                 position: spring_transform.translation(),
-                velocity: spring_velocity.0.extend(0.0),
+                velocity: spring_velocity.0,
             },
             springy::Particle {
                 mass: particle_mass.0,
                 position: particle_transform.translation(),
-                velocity: particle_velocity.0.extend(0.0),
+                velocity: particle_velocity.0,
             },
         );
 
@@ -85,8 +85,8 @@ pub fn spring_impulse(
             .get_many_mut([spring_entity, particle_entity])
             .unwrap();
 
-        spring_impulse.0 -= impulse.xy();
-        particle_impulse.0 += impulse.xy();
+        spring_impulse.0 -= impulse;
+        particle_impulse.0 += impulse;
     }
 }
 
