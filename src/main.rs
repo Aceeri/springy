@@ -42,9 +42,16 @@ pub struct Spring {
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
 pub struct SpringSettings {
+    /// Strength of the spring-like impulse. This is a range between 0 and 1
+    /// where 1 will bring the spring to equilibrium in 1 timestep.
     pub strength: f32,
+    /// Damping of the spring-like impulse. This is a range between 0 and 1
+    /// where 1 will bring the spring to equilibrium in 1 timestep.
     pub damping: f32,
+    /// Rest distance around the particle, it will try to push the particle out
+    /// when too close.
     pub rest_distance: f32,
+    /// Similar to rest distance except it will not push outwards if it is too close.
     pub limp_distance: f32,
 }
 
@@ -173,8 +180,6 @@ pub fn spring_impulse(
         let velocity_error = velocity;
 
         let reduced_mass = 1.0 / (spring_mass.inverse_mass() + particle_mass.inverse_mass());
-        let strength_max = reduced_mass / timestep;
-        let damping_max = reduced_mass;
 
         let distance_impulse = strength * distance_error * inverse_timestep * reduced_mass;
         let velocity_impulse = damping * velocity_error * reduced_mass;
