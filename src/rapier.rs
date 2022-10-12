@@ -11,10 +11,12 @@ use bevy::math::Vec3Swizzles;
 
 #[derive(WorldQuery)]
 pub struct RapierParticleQuery<'a> {
+    pub entity: Entity,
     pub global_transform: &'a GlobalTransform,
     pub rigid_body: Option<&'a RigidBody>,
     pub velocity: Option<&'a Velocity>,
     pub mass: Option<&'a ReadMassProperties>,
+    pub name: Option<&'a Name>,
 }
 
 #[cfg(feature = "rapier2d")]
@@ -29,6 +31,13 @@ impl<'w, 's> Into<Particle<Unit>> for RapierParticleQueryItem<'w, 's> {
 }
 
 impl<'w, 's> RapierParticleQueryItem<'w, 's> {
+    pub fn name<'a>(&'a self) -> Box<dyn std::fmt::Debug + 'a> {
+        match self.name {
+            Some(name) => Box::new(name),
+            None => Box::new(self.entity),
+        }
+    }
+
     pub fn velocity(&self) -> Velocity {
         match self.velocity {
             Some(velocity) => *velocity,
@@ -38,8 +47,9 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
                     | rigid_body @ RigidBody::KinematicVelocityBased,
                 ) => {
                     warn!(
-                        "{:?} rigidbody needs a `Velocity` component for spring damping",
-                        rigid_body
+                        "{:?} rigidbody for {:?} needs a `Velocity` component for spring damping",
+                        rigid_body,
+                        self.name()
                     );
                     Velocity::default()
                 }
@@ -54,8 +64,9 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
                 Some(mass) => mass.0.mass,
                 _ => {
                     warn!(
-                        "{:?} rigidbody needs a `ReadMassProperties` component for accurate spring calculations",
-                        rigid_body
+                        "{:?} rigidbody for {:?} needs a `readmassproperties` component for spring damping",
+                        rigid_body,
+                        self.name()
                     );
                     1.0
                 }
@@ -66,14 +77,22 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
     }
 
     pub fn local_center_of_mass(&self) -> Unit {
-        match self.mass {
-            Some(mass) => mass.0.local_center_of_mass,
-            _ => {
-                warn!(
-                    "Rigidbody needs a `ReadMassProperties` component for accurate spring calculations",
-                );
-                Unit::ZERO
-            }
+        match self.rigid_body {
+            Some(
+                rigid_body @ RigidBody::Dynamic | rigid_body @ RigidBody::KinematicVelocityBased,
+            ) => match self.mass {
+                Some(mass) => mass.0.local_center_of_mass,
+                _ => {
+                    warn!(
+                        "{:?} rigidbody for {:?} needs a `readmassproperties` component for spring damping",
+                        rigid_body,
+                        self.name()
+                    );
+                    Unit::ZERO
+                }
+            },
+            Some(_) => Unit::ZERO,
+            _ => Unit::ZERO,
         }
     }
     /*
