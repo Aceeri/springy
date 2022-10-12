@@ -4,10 +4,19 @@ edition = "2021"
 name = "springy"
 version = "0.1.0"
 
+[features]
+rapier2d = [
+  "bevy_rapier2d",
+]
+rapier3d = [
+  "bevy_rapier3d",
+]
+
 [dependencies]
 bevy = "0.8"
 bevy_editor_pls = "*"
-bevy_rapier2d = "0.17"
+bevy_rapier2d = {version = "0.17", optional = true}
+bevy_rapier3d = {version = "0.17", optional = true}
 
 [profile.dev]
 opt-level = 1

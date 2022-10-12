@@ -48,7 +48,7 @@ pub fn spring_impulse(
     time: Res<Time>,
     mut impulses: Query<&mut ExternalImpulse>,
     springs: Query<(Entity, &SpringSettings, &Spring)>,
-    particle: Query<(&GlobalTransform, &Velocity, &ReadMassProperties)>,
+    particle: Query<RapierParticleQuery>,
 ) {
     if time.delta_seconds() == 0.0 {
         return;
@@ -150,11 +150,19 @@ pub fn setup_physics(mut commands: Commands) {
             strength: 1.0,
             damping: 1.0,
         }))
-        .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
+        .insert_bundle((
+            Velocity::default(),
+            ExternalImpulse::default(),
+            ReadMassProperties::default(),
+        ))
         .insert(Name::new("Cube Slot"));
 
     commands
         .spawn_bundle(TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)))
-        .insert_bundle((Mass::default(), Velocity::default(), Impulse::default()))
+        .insert_bundle((
+            ReadMassProperties::default(),
+            Velocity::default(),
+            ExternalImpulse::default(),
+        ))
         .insert(Name::new("Cube 2"));
 }

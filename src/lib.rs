@@ -2,7 +2,12 @@ use bevy::prelude::*;
 
 pub mod prelude {
     pub use super::{Particle, Spring};
+    #[cfg(any(feature = "rapier2d", feature = "rapier3d"))]
+    pub use rapier::RapierParticleQuery;
 }
+
+#[cfg(any(feature = "rapier2d", feature = "rapier3d"))]
+pub mod rapier;
 
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
@@ -20,17 +25,63 @@ pub struct Spring {
     pub limp_distance: f32,
 }
 
-#[derive(Default, Debug, Copy, Clone, Reflect)]
-pub struct Particle {
+#[derive(Default, Debug)]
+pub struct Particle<S>
+where
+    S: Springable,
+{
     /// Mass of the particle, set to 0.0 or f32::INFINITY to set to `static`.
     pub mass: f32,
     /// Translation of the particle.
-    pub position: Vec3,
+    pub position: S,
     /// Current velocity of the particle.
-    pub velocity: Vec3,
+    pub velocity: S,
 }
 
-impl Particle {
+pub trait Springable:
+    std::ops::Sub<Self, Output = Self>
+    + std::ops::Add<Self, Output = Self>
+    + std::ops::Mul<f32, Output = Self>
+    + std::ops::Neg<Output = Self>
+    + Sized
+    + Copy
+    + std::fmt::Debug
+{
+    fn springable_length(self) -> f32;
+    fn springable_normalize_or_zero(self) -> Self;
+}
+
+impl Springable for f32 {
+    fn springable_length(self) -> f32 {
+        self
+    }
+    fn springable_normalize_or_zero(self) -> Self {
+        1.0
+    }
+}
+
+impl Springable for Vec2 {
+    fn springable_length(self) -> f32 {
+        self.length()
+    }
+    fn springable_normalize_or_zero(self) -> Self {
+        self.normalize_or_zero()
+    }
+}
+
+impl Springable for Vec3 {
+    fn springable_length(self) -> f32 {
+        self.length()
+    }
+    fn springable_normalize_or_zero(self) -> Self {
+        self.normalize_or_zero()
+    }
+}
+
+impl<S> Particle<S>
+where
+    S: Springable,
+{
     pub fn inverse_mass(&self) -> f32 {
         if self.mass != 0.0 {
             1.0 / self.mass
@@ -39,11 +90,11 @@ impl Particle {
         }
     }
 
-    pub fn position(&self) -> Vec3 {
+    pub fn position(&self) -> S {
         self.position
     }
 
-    pub fn velocity(&self) -> Vec3 {
+    pub fn velocity(&self) -> S {
         self.velocity
     }
 }
@@ -54,26 +105,29 @@ impl Spring {
     /// This makes assumptions that the integrator for your physics is symplectic Euler.
     /// This allows us to make the spring stable with any provided user inputs by constraining
     /// the spring strength to the `reduced mass / timestep` and the damping to `reduced_mass`.
-    pub fn impulse(&self, timestep: f32, particle_a: Particle, particle_b: Particle) -> Vec3 {
+    pub fn impulse<S>(&self, timestep: f32, particle_a: Particle<S>, particle_b: Particle<S>) -> S
+    where
+        S: Springable,
+    {
         let inverse_timestep = 1.0 / timestep;
 
         let distance = particle_b.position() - particle_a.position();
         let velocity = particle_b.velocity() - particle_a.velocity();
 
-        let unit_vector = distance.normalize_or_zero();
-        let distance_error = if self.limp_distance > distance.length() {
+        let unit_vector = distance.springable_normalize_or_zero();
+        let distance_length: f32 = if self.limp_distance > distance.springable_length() {
             0.0
         } else {
-            unit_vector.dot(distance) - self.rest_distance
+            distance.springable_length() - self.rest_distance
         };
 
-        let distance_error = distance_error * unit_vector;
+        let distance_error = unit_vector * distance_length;
         let velocity_error = velocity;
 
         let reduced_mass = 1.0 / (particle_a.inverse_mass() + particle_b.inverse_mass());
 
-        let distance_impulse = self.strength * distance_error * inverse_timestep * reduced_mass;
-        let velocity_impulse = self.damping * velocity_error * reduced_mass;
+        let distance_impulse = distance_error * self.strength * inverse_timestep * reduced_mass;
+        let velocity_impulse = velocity_error * self.damping * reduced_mass;
 
         let impulse = -(distance_impulse + velocity_impulse);
         impulse

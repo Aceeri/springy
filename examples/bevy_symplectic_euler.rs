@@ -1,6 +1,5 @@
 use bevy::math::Vec3Swizzles;
 use bevy::{prelude::*, window::PresentMode};
-use bevy_rapier2d::prelude::*;
 
 const TICK_RATE: f32 = 1.0 / 100.0;
 
@@ -148,13 +147,11 @@ pub fn setup_physics(mut commands: Commands) {
     let ground_size = 5000.0;
     let ground_height = 10.0;
 
-    commands
-        .spawn_bundle(TransformBundle::from(Transform::from_xyz(
-            0.0,
-            -ground_height - 100.0,
-            0.0,
-        )))
-        .insert(Collider::cuboid(ground_size, ground_height));
+    commands.spawn_bundle(TransformBundle::from(Transform::from_xyz(
+        0.0,
+        -ground_height - 100.0,
+        0.0,
+    )));
 
     /*
      * Create the cubes
