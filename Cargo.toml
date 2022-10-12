@@ -19,12 +19,13 @@ rapier3d = [
 ]
 
 [dependencies]
-bevy = "0.8"
+bevy = {version = "0.8", default-features = false}
 bevy-inspector-egui = "0.13"
 bevy_rapier2d = {version = "0.17", optional = true}
 bevy_rapier3d = {version = "0.17", optional = true}
 
 [dev-dependencies]
+bevy = {version = "0.8", default-features = true}
 bevy_editor_pls = "0.1"
 
 [profile.dev]
