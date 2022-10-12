@@ -1,4 +1,5 @@
 [package]
+author = ["Aceeri (conmcclusk@gmail.com)"]
 description = "Stable springs for game development usecases"
 edition = "2021"
 name = "springy"
