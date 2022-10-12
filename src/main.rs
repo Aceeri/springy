@@ -45,6 +45,7 @@ pub struct SpringSettings {
     pub strength: f32,
     pub damping: f32,
     pub rest_distance: f32,
+    pub limp_distance: f32,
 }
 
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
@@ -156,14 +157,19 @@ pub fn spring_impulse(
         let strength = spring_settings.strength;
         let damping = spring_settings.damping;
         let rest_distance = spring_settings.rest_distance;
+        let limp_distance = spring_settings.limp_distance;
 
         let distance = particle_transform.translation() - spring_transform.translation();
         let distance = Vec2::new(distance.x, distance.y);
         let velocity = particle_velocity.linvel - spring_velocity.linvel;
 
-        //let distance_error = unit_vector.dot(distance) - spring.rest_distance;
-        //let velocity_error = unit_vector.dot(velocity);
-        let distance_error = distance;
+        let unit_vector = distance.normalize_or_zero();
+        let distance_error = if limp_distance > distance.length() {
+            0.0
+        } else {
+            unit_vector.dot(distance) - rest_distance
+        };
+        let distance_error = distance_error * unit_vector;
         let velocity_error = velocity;
 
         let reduced_mass = 1.0 / (spring_mass.inverse_mass() + particle_mass.inverse_mass());
@@ -238,7 +244,8 @@ pub fn setup_physics(mut commands: Commands) {
         .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
         .insert(Spring { containing: cube_1 })
         .insert(SpringSettings {
-            rest_distance: 0.0,
+            rest_distance: 5.0,
+            limp_distance: 5.0,
             strength: 1.0,
             damping: 1.0,
         })
