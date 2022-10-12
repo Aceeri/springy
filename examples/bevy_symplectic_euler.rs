@@ -113,23 +113,6 @@ pub fn symplectic_euler(
     }
 }
 
-/*
-// First we calculate the distance and velocity vectors.
-vec2 distance = S->particle_b->position - S->particle_a->position;
-vec2 velocity = S->particle_b->velocity - S->particle_a->velocity;
-// We normalize the distance vector to get the unit vector.
-S->unit_vector = distance.normalize();
-// Now we calculate the distance and velocity errors.
-float distance_error = S->unit_vector.dot( distance ) - S->rest_distance;
-float velocity_error = S->unit_vector.dot( velocity );
-// Now we use the spring equation to calculate the impulse.
-float distance_impulse = C_S * distance_error * INVERSE_TIMESTEP;
-float velocity_impulse = C_D * velocity_error;
-float impulse = -( distance_impulse + velocity_impulse ) * S->reduced_mass;
-// Finally, we apply opposite equal impulses to the endpoint particles.
-S->particle_a->impulse -= impulse * S->unit_vector;
-S->particle_b->impulse += impulse * S->unit_vector
-*/
 pub fn spring_impulse(
     time: Res<Time>,
     mut impulses: Query<&mut Impulse>,

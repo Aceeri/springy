@@ -1612,15 +1612,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fix-rapier"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "bevy_editor_pls",
- "bevy_rapier2d",
-]
-
-[[package]]
 name = "fixedbitset"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3232,6 +3223,15 @@ checksum = "246bfa38fe3db3f1dfc8ca5a2cdeb7348c78be2112740cc0ec8ef18b6d94f830"
 dependencies = [
  "bitflags",
  "num-traits",
+]
+
+[[package]]
+name = "springy"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_editor_pls",
+ "bevy_rapier2d",
 ]
 
 [[package]]

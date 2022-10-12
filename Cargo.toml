@@ -1,6 +1,7 @@
 [package]
+description = "Stable springs for game development usecases"
 edition = "2021"
-name = "fix-rapier"
+name = "springy"
 version = "0.1.0"
 
 [dependencies]
