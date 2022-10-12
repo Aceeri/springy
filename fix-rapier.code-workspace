@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../rapier"
+		},
+		{
+			"path": "../bevy_rapier"
+		},
+		{
+			"path": "../potion"
+		}
+	],
+	"settings": {}
+}
