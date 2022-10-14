@@ -40,5 +40,5 @@ path = "examples/bevy_rapier.rs"
 required-features = ["rapier2d"]
 
 [[example]]
-name = "bevy_simple"
+name = "simple"
 path = "examples/bevy_simple.rs"

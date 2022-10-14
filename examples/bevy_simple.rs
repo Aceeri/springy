@@ -21,6 +21,7 @@ fn main() {
         .add_startup_system(setup_physics)
         .add_system_to_stage(CoreStage::PostUpdate, symplectic_euler)
         .add_system(spring_impulse)
+        .add_system(gravity)
         .register_type::<Impulse>()
         .register_type::<Velocity>()
         .register_type::<SpringSettings>()
@@ -84,6 +85,16 @@ pub fn symplectic_euler(
         velocity.0 += impulse.0 * mass.inverse_mass();
         position.translation += velocity.0.extend(0.0) * TICK_RATE;
         impulse.0 = Vec2::ZERO;
+    }
+}
+
+pub fn gravity(time: Res<Time>, mut to_apply: Query<(&mut Impulse)>) {
+    if time.delta_seconds() == 0.0 {
+        return;
+    }
+
+    for (mut impulse) in &mut to_apply {
+        impulse.0 += Vec2::new(0.0, -9.817);
     }
 }
 
@@ -173,14 +184,48 @@ pub fn setup_physics(mut commands: Commands) {
         anchor: Default::default(),
     };
 
+    let cube_3 = commands
+        .spawn()
+        .insert_bundle(SpriteBundle {
+            sprite: sprite.clone(),
+            ..default()
+        })
+        .insert_bundle((Mass::default(), Velocity::default(), Impulse::default()))
+        .insert(Name::new("Cube 3"))
+        .id();
+
+    let cube_2 = commands
+        .spawn()
+        .insert_bundle(SpriteBundle {
+            sprite: sprite.clone(),
+            ..default()
+        })
+        .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
+        .insert(Name::new("Cube 2"))
+        .insert(Spring { containing: cube_3 })
+        .insert(SpringSettings(springy::Spring {
+            rest_distance: 50.0,
+            limp_distance: 0.0,
+            strength: 1.0,
+            damping: 1.,
+        }))
+        .id();
+
     let cube_1 = commands
         .spawn()
         .insert_bundle(SpriteBundle {
-            sprite: sprite,
+            sprite: sprite.clone(),
             ..default()
         })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
         .insert_bundle((Velocity::default(), Impulse::default(), Mass::default()))
+        .insert(Spring { containing: cube_2 })
+        .insert(SpringSettings(springy::Spring {
+            rest_distance: 50.0,
+            limp_distance: 0.0,
+            strength: 0.33,
+            damping: 0.33,
+        }))
         .insert(Name::new("Cube 1"))
         .id();
 
@@ -193,16 +238,11 @@ pub fn setup_physics(mut commands: Commands) {
         .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
         .insert(Spring { containing: cube_1 })
         .insert(SpringSettings(springy::Spring {
-            rest_distance: 5.0,
-            limp_distance: 5.0,
+            rest_distance: 50.0,
+            limp_distance: 0.0,
             strength: 1.0,
             damping: 1.0,
         }))
         .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
         .insert(Name::new("Cube Slot"));
-
-    commands
-        .spawn_bundle(TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)))
-        .insert_bundle((Mass::default(), Velocity::default(), Impulse::default()))
-        .insert(Name::new("Cube 2"));
 }

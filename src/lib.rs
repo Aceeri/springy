@@ -56,6 +56,7 @@ pub trait Springable:
 {
     fn springable_length(self) -> f32;
     fn springable_normalize_or_zero(self) -> Self;
+    fn springable_dot(self, other: Self) -> f32;
 }
 
 impl Springable for f32 {
@@ -64,6 +65,9 @@ impl Springable for f32 {
     }
     fn springable_normalize_or_zero(self) -> Self {
         1.0
+    }
+    fn springable_dot(self, other: Self) -> f32 {
+        self * other
     }
 }
 
@@ -74,6 +78,9 @@ impl Springable for Vec2 {
     fn springable_normalize_or_zero(self) -> Self {
         self.normalize_or_zero()
     }
+    fn springable_dot(self, other: Self) -> f32 {
+        self.dot(other)
+    }
 }
 
 impl Springable for Vec3 {
@@ -82,6 +89,9 @@ impl Springable for Vec3 {
     }
     fn springable_normalize_or_zero(self) -> Self {
         self.normalize_or_zero()
+    }
+    fn springable_dot(self, other: Self) -> f32 {
+        self.dot(other)
     }
 }
 
@@ -137,7 +147,7 @@ impl Spring {
         };
 
         let distance_error = unit_vector * distance_length;
-        let velocity_error = velocity;
+        let velocity_error = unit_vector * velocity.springable_dot(unit_vector);
 
         let reduced_mass = 1.0 / (particle_a.inverse_mass() + particle_b.inverse_mass());
 
