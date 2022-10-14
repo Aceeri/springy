@@ -200,14 +200,14 @@ pub fn setup_physics(mut commands: Commands) {
             sprite: sprite.clone(),
             ..default()
         })
-        .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
+        .insert_bundle((Velocity::default(), Impulse::default(), Mass::default()))
         .insert(Name::new("Cube 2"))
         .insert(Spring { containing: cube_3 })
         .insert(SpringSettings(springy::Spring {
             rest_distance: 50.0,
             limp_distance: 0.0,
-            strength: 1.0,
-            damping: 1.,
+            strength: 0.01,
+            damp_ratio: 1.0,
         }))
         .id();
 
@@ -224,7 +224,7 @@ pub fn setup_physics(mut commands: Commands) {
             rest_distance: 50.0,
             limp_distance: 0.0,
             strength: 0.33,
-            damping: 0.33,
+            damp_ratio: 1.0,
         }))
         .insert(Name::new("Cube 1"))
         .id();
@@ -240,8 +240,8 @@ pub fn setup_physics(mut commands: Commands) {
         .insert(SpringSettings(springy::Spring {
             rest_distance: 50.0,
             limp_distance: 0.0,
-            strength: 1.0,
-            damping: 1.0,
+            strength: 0.01,
+            damp_ratio: 1.0,
         }))
         .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
         .insert(Name::new("Cube Slot"));

@@ -17,12 +17,16 @@ pub use rapier::RapierParticleQuery;
 pub struct Spring {
     /// Strength of the spring-like impulse. This is a range between 0 and 1
     /// where 1 will bring the spring to equilibrium in 1 timestep.
-    #[inspectable(min = 0.0, max = 1.0)]
+    #[inspectable(min = 0.0, max = 1.0, speed = 0.01)]
     pub strength: f32,
-    /// Damping of the spring-like impulse. This is a range between 0 and 1
-    /// where 1 will bring the spring to equilibrium in 1 timestep.
-    #[inspectable(min = 0.0, max = 1.0)]
-    pub damping: f32,
+    /// Damping of the spring-like impulse. <1 will be treated as under-dampened
+    /// and will overshoot the target, >=1 will be treated as critically dampened
+    /// and shouldn't overshoot the target.
+    ///
+    /// Note this will not be completely respected to avoid instability in the spring.
+    /// So overshooting *may* happen if you have a really high strength value.
+    #[inspectable(min = 0.0, max = 4.0, speed = 0.05)]
+    pub damp_ratio: f32,
     /// Rest distance around the particle, it will try to push the particle out
     /// when too close.
     #[inspectable(min = 0.0)]
@@ -151,8 +155,10 @@ impl Spring {
 
         let reduced_mass = 1.0 / (particle_a.inverse_mass() + particle_b.inverse_mass());
 
+        let damping = self.damp_ratio * 2.0 * self.strength.sqrt();
+
         let distance_impulse = distance_error * self.strength * inverse_timestep * reduced_mass;
-        let velocity_impulse = velocity_error * self.damping * reduced_mass;
+        let velocity_impulse = velocity_error * damping.clamp(0.0, 1.0) * reduced_mass;
 
         let impulse = -(distance_impulse + velocity_impulse);
         impulse
