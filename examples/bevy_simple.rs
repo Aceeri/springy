@@ -5,11 +5,7 @@ const TICK_RATE: f32 = 1.0 / 100.0;
 
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::rgb(
-            0xF9 as f32 / 255.0,
-            0xF9 as f32 / 255.0,
-            0xFF as f32 / 255.0,
-        )))
+        .insert_resource(ClearColor(Color::DARK_GRAY))
         .insert_resource(WindowDescriptor {
             present_mode: PresentMode::AutoVsync,
             ..default()
@@ -30,7 +26,7 @@ fn main() {
 
 fn setup_graphics(mut commands: Commands) {
     commands.spawn_bundle(Camera2dBundle {
-        transform: Transform::from_xyz(0.0, 20.0, 0.0),
+        transform: Transform::from_xyz(0.0, 300.0, 0.0),
         ..default()
     });
 }
@@ -54,7 +50,7 @@ pub struct Impulse(Vec2);
 
 #[derive(Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
-pub struct Mass(f32);
+pub struct Mass(pub f32);
 
 impl Default for Mass {
     fn default() -> Self {
@@ -69,6 +65,16 @@ impl Mass {
         } else {
             0.0
         }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Component, Reflect)]
+#[reflect(Component)]
+pub struct Gravity(pub Vec2);
+
+impl Default for Gravity {
+    fn default() -> Self {
+        Self(Vec2::new(0.0, -9.817))
     }
 }
 
@@ -88,13 +94,13 @@ pub fn symplectic_euler(
     }
 }
 
-pub fn gravity(time: Res<Time>, mut to_apply: Query<(&mut Impulse)>) {
+pub fn gravity(time: Res<Time>, mut to_apply: Query<(&mut Impulse, &Gravity)>) {
     if time.delta_seconds() == 0.0 {
         return;
     }
 
-    for (mut impulse) in &mut to_apply {
-        //impulse.0 += Vec2::new(0.0, -9.817);
+    for (mut impulse, gravity) in &mut to_apply {
+        impulse.0 += gravity.0;
     }
 }
 
@@ -175,7 +181,12 @@ pub fn setup(mut commands: Commands) {
             sprite: sprite.clone(),
             ..default()
         })
-        .insert_bundle((Mass::default(), Velocity::default(), Impulse::default()))
+        .insert_bundle((
+            Velocity::default(),
+            Impulse::default(),
+            Mass::default(),
+            Gravity::default(),
+        ))
         .insert(Name::new("Cube 3"))
         .id();
 
@@ -185,7 +196,12 @@ pub fn setup(mut commands: Commands) {
             sprite: sprite.clone(),
             ..default()
         })
-        .insert_bundle((Velocity::default(), Impulse::default(), Mass::default()))
+        .insert_bundle((
+            Velocity::default(),
+            Impulse::default(),
+            Mass::default(),
+            Gravity::default(),
+        ))
         .insert(Name::new("Cube 2"))
         .insert(Spring { containing: cube_3 })
         .insert(SpringSettings(springy::Spring {
@@ -203,7 +219,12 @@ pub fn setup(mut commands: Commands) {
             ..default()
         })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
-        .insert_bundle((Velocity::default(), Impulse::default(), Mass::default()))
+        .insert_bundle((
+            Velocity::default(),
+            Impulse::default(),
+            Mass::default(),
+            Gravity::default(),
+        ))
         .insert(Spring { containing: cube_2 })
         .insert(SpringSettings(springy::Spring {
             rest_distance: 50.0,
@@ -220,7 +241,7 @@ pub fn setup(mut commands: Commands) {
             sprite: slot.clone(),
             ..default()
         })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
+        .insert_bundle(TransformBundle::from(Transform::from_xyz(0.0, 300.0, 0.0)))
         .insert(Spring { containing: cube_1 })
         .insert(SpringSettings(springy::Spring {
             rest_distance: 50.0,
@@ -231,33 +252,50 @@ pub fn setup(mut commands: Commands) {
         .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
         .insert(Name::new("Cube Slot"));
 
-    let critical_cube = commands
-        .spawn()
-        .insert_bundle(SpriteBundle {
-            sprite: sprite.clone(),
-            ..default()
-        })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(200.0, 50.0, 0.0)))
-        .insert_bundle((Velocity::default(), Impulse::default(), Mass::default()))
-        .insert(Name::new("Critical"))
-        .id();
+    let iterations = 100;
+    for damped in 0..iterations {
+        let size = 5.0;
+        let damped_sprite = Sprite {
+            color: Color::YELLOW,
+            flip_x: false,
+            flip_y: false,
+            custom_size: Some(Vec2::new(size, size)),
+            anchor: Default::default(),
+        };
 
-    let critical_slot = commands
-        .spawn()
-        .insert_bundle(SpriteBundle {
-            sprite: slot.clone(),
-            ..default()
-        })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(100.0, 50.0, 0.0)))
-        .insert(Spring {
-            containing: critical_cube,
-        })
-        .insert(SpringSettings(springy::Spring {
-            rest_distance: 0.0,
-            limp_distance: 0.0,
-            strength: 0.1,
-            damp_ratio: 0.3,
-        }))
-        .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
-        .insert(Name::new("Critical Slot"));
+        let height = damped as f32 * (size + 1.0);
+        let damped_cube = commands
+            .spawn()
+            .insert_bundle(SpriteBundle {
+                sprite: damped_sprite.clone(),
+                ..default()
+            })
+            .insert_bundle(TransformBundle::from(Transform::from_xyz(
+                300.0, height, 0.0,
+            )))
+            .insert_bundle((Velocity::default(), Impulse::default(), Mass::default()))
+            .insert(Name::new("Critical"))
+            .id();
+
+        let critical_slot = commands
+            .spawn()
+            .insert_bundle(SpriteBundle {
+                sprite: slot.clone(),
+                ..default()
+            })
+            .insert_bundle(TransformBundle::from(Transform::from_xyz(
+                100.0, height, 0.0,
+            )))
+            .insert(Spring {
+                containing: damped_cube,
+            })
+            .insert(SpringSettings(springy::Spring {
+                rest_distance: 0.0,
+                limp_distance: 0.0,
+                strength: 0.05,
+                damp_ratio: damped as f32 / 100.0 as f32,
+            }))
+            .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
+            .insert(Name::new("Critical Slot"));
+    }
 }
