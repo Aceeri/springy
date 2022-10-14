@@ -112,16 +112,21 @@ pub fn gravity(time: Res<Time>, mut to_apply: Query<(&mut Impulse, &Gravity)>) {
     }
 }
 
+#[derive(Default, Debug, Copy, Clone, Component, Reflect)]
+#[reflect(Component)]
+pub struct PreviousUnitVector(Option<Vec2>);
+
 pub fn spring_impulse(
     time: Res<Time>,
     mut impulses: Query<&mut Impulse>,
-    springs: Query<(
+    mut springs: Query<(
         Entity,
         &GlobalTransform,
         &Velocity,
         &Mass,
         &SpringSettings,
         &Spring,
+        &mut PreviousUnitVector,
     )>,
     particle: Query<(&GlobalTransform, &Velocity, &Mass)>,
 ) {
@@ -131,8 +136,15 @@ pub fn spring_impulse(
 
     let timestep = TICK_RATE as f32;
 
-    for (spring_entity, spring_transform, spring_velocity, spring_mass, spring_settings, spring) in
-        &springs
+    for (
+        spring_entity,
+        spring_transform,
+        spring_velocity,
+        spring_mass,
+        spring_settings,
+        spring,
+        mut previous_unit_vector,
+    ) in &mut springs
     {
         let particle_entity = spring.containing;
         let (particle_transform, particle_velocity, particle_mass) =
@@ -142,7 +154,7 @@ pub fn spring_impulse(
             continue;
         }
 
-        let impulse = spring_settings.0.impulse(
+        let (impulse, unit_vec) = spring_settings.0.impulse(
             timestep,
             springy::Particle {
                 mass: spring_mass.0,
@@ -154,6 +166,7 @@ pub fn spring_impulse(
                 position: particle_transform.translation().xy(),
                 velocity: particle_velocity.0,
             },
+            previous_unit_vector.0,
         );
 
         let [mut spring_impulse, mut particle_impulse] = impulses
@@ -162,6 +175,7 @@ pub fn spring_impulse(
 
         spring_impulse.0 -= impulse;
         particle_impulse.0 += impulse;
+        previous_unit_vector.0 = Some(unit_vec);
     }
 }
 
@@ -194,6 +208,7 @@ pub fn setup(mut commands: Commands) {
             Impulse::default(),
             Mass::default(),
             Gravity::default(),
+            PreviousUnitVector::default(),
         ))
         .insert(Name::new("Cube 3"))
         .id();
@@ -209,13 +224,14 @@ pub fn setup(mut commands: Commands) {
             Impulse::default(),
             Mass::default(),
             Gravity::default(),
+            PreviousUnitVector::default(),
         ))
         .insert(Name::new("Cube 2"))
         .insert(Spring { containing: cube_3 })
         .insert(SpringSettings(springy::Spring {
             rest_distance: 50.0,
             limp_distance: 0.0,
-            strength: 0.01,
+            strength: 1.0,
             damp_ratio: 1.0,
         }))
         .id();
@@ -232,6 +248,7 @@ pub fn setup(mut commands: Commands) {
             Impulse::default(),
             Mass::default(),
             Gravity::default(),
+            PreviousUnitVector::default(),
         ))
         .insert(Spring { containing: cube_2 })
         .insert(SpringSettings(springy::Spring {
@@ -257,7 +274,12 @@ pub fn setup(mut commands: Commands) {
             strength: 0.01,
             damp_ratio: 1.0,
         }))
-        .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
+        .insert_bundle((
+            Velocity::default(),
+            Impulse::default(),
+            Mass(f32::INFINITY),
+            PreviousUnitVector::default(),
+        ))
         .insert(Name::new("Cube Slot"));
 
     let iterations = 100;
@@ -281,7 +303,12 @@ pub fn setup(mut commands: Commands) {
             .insert_bundle(TransformBundle::from(Transform::from_xyz(
                 300.0, height, 0.0,
             )))
-            .insert_bundle((Velocity::default(), Impulse::default(), Mass::default()))
+            .insert_bundle((
+                Velocity::default(),
+                Impulse::default(),
+                Mass::default(),
+                PreviousUnitVector::default(),
+            ))
             .insert(Name::new("Critical"))
             .id();
 
@@ -303,7 +330,12 @@ pub fn setup(mut commands: Commands) {
                 strength: 0.05,
                 damp_ratio: damped as f32 / 100.0 as f32,
             }))
-            .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
+            .insert_bundle((
+                Velocity::default(),
+                Impulse::default(),
+                Mass(f32::INFINITY),
+                PreviousUnitVector::default(),
+            ))
             .insert(Name::new("Critical Slot"));
     }
 }

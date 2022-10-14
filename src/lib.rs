@@ -131,7 +131,8 @@ impl Spring {
         timestep: f32,
         particle_a: impl Into<Particle<S>>,
         particle_b: impl Into<Particle<S>>,
-    ) -> S
+        last_impulse_unit: Option<S>,
+    ) -> (S, S)
     where
         S: Springable,
     {
@@ -150,18 +151,18 @@ impl Spring {
             distance.springable_length() - self.rest_distance
         };
 
+        let velocity_vector = last_impulse_unit.unwrap_or(unit_vector);
         let distance_error = unit_vector * distance_length;
-        let velocity_error = unit_vector * velocity.springable_dot(unit_vector);
+        let velocity_error = velocity_vector * velocity.springable_dot(velocity_vector);
 
         let reduced_mass = 1.0 / (particle_a.inverse_mass() + particle_b.inverse_mass());
 
         let damping = self.damp_ratio * 2.0 * self.strength.sqrt();
 
         let distance_impulse = distance_error * self.strength * inverse_timestep * reduced_mass;
-        let velocity_impulse =
-            (velocity_error + distance_impulse) * damping.clamp(0.0, 1.0) * reduced_mass;
+        let velocity_impulse = velocity_error * damping.clamp(0.0, 1.0) * reduced_mass;
 
         let impulse = -(distance_impulse + velocity_impulse);
-        impulse
+        (impulse, unit_vector)
     }
 }
