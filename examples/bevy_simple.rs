@@ -18,7 +18,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_editor_pls::EditorPlugin)
         .add_startup_system(setup_graphics)
-        .add_startup_system(setup_physics)
+        .add_startup_system(setup)
         .add_system_to_stage(CoreStage::PostUpdate, symplectic_euler)
         .add_system(spring_impulse)
         .add_system(gravity)
@@ -94,7 +94,7 @@ pub fn gravity(time: Res<Time>, mut to_apply: Query<(&mut Impulse)>) {
     }
 
     for (mut impulse) in &mut to_apply {
-        impulse.0 += Vec2::new(0.0, -9.817);
+        //impulse.0 += Vec2::new(0.0, -9.817);
     }
 }
 
@@ -151,22 +151,7 @@ pub fn spring_impulse(
     }
 }
 
-pub fn setup_physics(mut commands: Commands) {
-    /*
-     * Ground
-     */
-    let ground_size = 5000.0;
-    let ground_height = 10.0;
-
-    commands.spawn_bundle(TransformBundle::from(Transform::from_xyz(
-        0.0,
-        -ground_height - 100.0,
-        0.0,
-    )));
-
-    /*
-     * Create the cubes
-     */
+pub fn setup(mut commands: Commands) {
     let size = 20.0;
     let sprite = Sprite {
         color: Color::BLUE,
@@ -232,7 +217,7 @@ pub fn setup_physics(mut commands: Commands) {
     let cube_slot = commands
         .spawn()
         .insert_bundle(SpriteBundle {
-            sprite: slot,
+            sprite: slot.clone(),
             ..default()
         })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
@@ -245,4 +230,34 @@ pub fn setup_physics(mut commands: Commands) {
         }))
         .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
         .insert(Name::new("Cube Slot"));
+
+    let critical_cube = commands
+        .spawn()
+        .insert_bundle(SpriteBundle {
+            sprite: sprite.clone(),
+            ..default()
+        })
+        .insert_bundle(TransformBundle::from(Transform::from_xyz(200.0, 50.0, 0.0)))
+        .insert_bundle((Velocity::default(), Impulse::default(), Mass::default()))
+        .insert(Name::new("Critical"))
+        .id();
+
+    let critical_slot = commands
+        .spawn()
+        .insert_bundle(SpriteBundle {
+            sprite: slot.clone(),
+            ..default()
+        })
+        .insert_bundle(TransformBundle::from(Transform::from_xyz(100.0, 50.0, 0.0)))
+        .insert(Spring {
+            containing: critical_cube,
+        })
+        .insert(SpringSettings(springy::Spring {
+            rest_distance: 0.0,
+            limp_distance: 0.0,
+            strength: 0.1,
+            damp_ratio: 0.3,
+        }))
+        .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
+        .insert(Name::new("Critical Slot"));
 }
