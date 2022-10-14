@@ -3,6 +3,7 @@ use bevy::time::FixedTimestep;
 use bevy::{prelude::*, window::PresentMode};
 
 const TICK_RATE: f64 = 1.0 / 100.0;
+const VISUAL_SLOWDOWN: f64 = 1.0;
 
 fn main() {
     App::new()
@@ -18,7 +19,7 @@ fn main() {
         .add_startup_system(setup)
         .add_system_set(
             SystemSet::new()
-                .with_run_criteria(FixedTimestep::step(TICK_RATE))
+                .with_run_criteria(FixedTimestep::step(TICK_RATE * VISUAL_SLOWDOWN))
                 .with_system(symplectic_euler)
                 .with_system(spring_impulse.before(symplectic_euler))
                 .with_system(gravity.before(symplectic_euler)),
