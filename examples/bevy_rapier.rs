@@ -139,7 +139,7 @@ pub fn setup_physics(mut commands: Commands) {
             rest_distance: 5.0,
             limp_distance: 5.0,
             strength: 1.0,
-            damping: 1.0,
+            damp_ratio: 1.0,
         }))
         .insert_bundle((
             //RigidBody::Dynamic,
