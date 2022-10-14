@@ -158,7 +158,8 @@ impl Spring {
         let damping = self.damp_ratio * 2.0 * self.strength.sqrt();
 
         let distance_impulse = distance_error * self.strength * inverse_timestep * reduced_mass;
-        let velocity_impulse = velocity_error * damping.clamp(0.0, 1.0) * reduced_mass;
+        let velocity_impulse =
+            (velocity_error + distance_impulse) * damping.clamp(0.0, 1.0) * reduced_mass;
 
         let impulse = -(distance_impulse + velocity_impulse);
         impulse
