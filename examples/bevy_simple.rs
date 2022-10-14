@@ -1,7 +1,8 @@
 use bevy::math::Vec3Swizzles;
+use bevy::time::FixedTimestep;
 use bevy::{prelude::*, window::PresentMode};
 
-const TICK_RATE: f32 = 1.0 / 100.0;
+const TICK_RATE: f64 = 1.0 / 100.0;
 
 fn main() {
     App::new()
@@ -15,10 +16,16 @@ fn main() {
         .add_plugin(bevy_editor_pls::EditorPlugin)
         .add_startup_system(setup_graphics)
         .add_startup_system(setup)
-        .add_system_to_stage(CoreStage::PostUpdate, symplectic_euler)
-        .add_system(spring_impulse)
-        .add_system(gravity)
+        .add_system_set(
+            SystemSet::new()
+                .with_run_criteria(FixedTimestep::step(TICK_RATE))
+                .with_system(symplectic_euler)
+                .with_system(spring_impulse.before(symplectic_euler))
+                .with_system(gravity.before(symplectic_euler)),
+        )
         .register_type::<Impulse>()
+        .register_type::<Gravity>()
+        .register_type::<Mass>()
         .register_type::<Velocity>()
         .register_type::<SpringSettings>()
         .run();
@@ -89,7 +96,7 @@ pub fn symplectic_euler(
 
     for (mut position, mut velocity, mut impulse, mass) in &mut to_integrate {
         velocity.0 += impulse.0 * mass.inverse_mass();
-        position.translation += velocity.0.extend(0.0) * TICK_RATE;
+        position.translation += velocity.0.extend(0.0) * TICK_RATE as f32;
         impulse.0 = Vec2::ZERO;
     }
 }
@@ -121,7 +128,7 @@ pub fn spring_impulse(
         return;
     }
 
-    let timestep = TICK_RATE;
+    let timestep = TICK_RATE as f32;
 
     for (spring_entity, spring_transform, spring_velocity, spring_mass, spring_settings, spring) in
         &springs
