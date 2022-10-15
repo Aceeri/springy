@@ -36,6 +36,56 @@ pub struct Spring {
     pub limp_distance: f32,
 }
 
+#[derive(Default, Debug, Copy, Clone, Component, Reflect, Inspectable)]
+pub struct SpringState<S>
+where
+    S: Springable,
+{
+    /// Last unit vector so that damping knows what to dampen.
+    pub last_unit_vector: Option<S>,
+    /// Parameters under which the spring should break.
+    pub breaking: Option<SpringBreak>,
+    pub spring: Spring,
+}
+
+impl<S> SpringState<S>
+where
+    S: Springable,
+{
+    pub fn new(spring: Spring) -> Self {
+        Self {
+            last_unit_vector: None,
+            breaking: None,
+            spring,
+        }
+    }
+}
+
+#[derive(Default, Debug, Copy, Clone, Component, Reflect, Inspectable)]
+pub struct SpringBreak {
+    /// Current status of the breaking spring.
+    #[inspectable(min = 0.0, max = 1.0, speed = 0.05)]
+    pub current_tear: f32,
+    /// Force required to start tearing spring off.
+    #[inspectable(min = 0.0, max = 100.0, speed = 1.0)]
+    pub tear_force: f32,
+    /// Amount to step tearing each timestep (multiplied by timestep).
+    #[inspectable(min = 0.0, max = 1.0, speed = 0.01)]
+    pub tear_step: f32,
+}
+
+impl SpringBreak {
+    pub fn impulse<S: Springable>(&mut self, impulse: S) -> bool {
+        let impulse_length = impulse.springable_length();
+        if self.tear_force > impulse_length {
+            self.current_tear += self.tear_step;
+            self.current_tear.clamp(0.0, 1.0);
+        }
+
+        self.current_tear >= 1.0
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct Particle<S>
 where
@@ -56,7 +106,12 @@ pub trait Springable:
     + std::ops::Neg<Output = Self>
     + Sized
     + Copy
+    + Send
+    + Sync
     + std::fmt::Debug
+    + Reflect
+    + Inspectable
+    + 'static
 {
     fn springable_length(self) -> f32;
     fn springable_normalize_or_zero(self) -> Self;
@@ -120,9 +175,45 @@ where
     }
 }
 
-//pub const MIN_DAMP_COEFFICIENT: f32 = 0.0075e-2f32;
-pub const MIN_DAMP_COEFFICIENT: f32 = 0.0;
+pub enum SpringResult<S>
+where
+    S: Springable,
+{
+    Impulse(S),
+    Broke,
+}
 
+impl<S> SpringState<S>
+where
+    S: Springable,
+{
+    pub fn impulse(
+        &mut self,
+        timestep: f32,
+        particle_a: impl Into<Particle<S>>,
+        particle_b: impl Into<Particle<S>>,
+    ) -> SpringResult<S>
+    where
+        S: Springable,
+    {
+        let (impulse, unit_vector) =
+            self.spring
+                .impulse::<S>(timestep, particle_a, particle_b, self.last_unit_vector);
+        self.last_unit_vector = Some(unit_vector);
+
+        let broke = if let Some(breaking) = &mut self.breaking {
+            breaking.impulse(impulse)
+        } else {
+            false
+        };
+
+        if broke {
+            SpringResult::Broke
+        } else {
+            SpringResult::Impulse(impulse)
+        }
+    }
+}
 impl Spring {
     /// Impulse required to satisfy the spring constraint.
     ///
@@ -163,8 +254,7 @@ impl Spring {
         let damping = self.damp_ratio * 2.0 * self.strength.sqrt();
 
         let distance_impulse = distance_error * self.strength * inverse_timestep * reduced_mass;
-        let velocity_impulse =
-            velocity_error * damping.clamp(MIN_DAMP_COEFFICIENT, 1.0) * reduced_mass;
+        let velocity_impulse = velocity_error * damping.clamp(0.0, 1.0) * reduced_mass;
 
         let impulse = -(distance_impulse + velocity_impulse);
         (impulse, unit_vector)

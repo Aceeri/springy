@@ -2,7 +2,7 @@ use bevy::math::Vec3Swizzles;
 use bevy::time::FixedTimestep;
 use bevy::{prelude::*, window::PresentMode};
 
-const TICK_RATE: f64 = 1.0 / 100.0;
+const TICK_RATE: f64 = 1.0 / 60.0;
 const VISUAL_SLOWDOWN: f64 = 1.0;
 
 fn main() {
@@ -19,7 +19,7 @@ fn main() {
         .add_startup_system(setup)
         .add_system_set(
             SystemSet::new()
-                .with_run_criteria(FixedTimestep::step(TICK_RATE * VISUAL_SLOWDOWN))
+                //.with_run_criteria(FixedTimestep::step(TICK_RATE * VISUAL_SLOWDOWN))
                 .with_system(symplectic_euler)
                 .with_system(spring_impulse.before(symplectic_euler))
                 .with_system(gravity.before(symplectic_euler)),
@@ -46,7 +46,7 @@ pub struct Spring {
 
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
-pub struct SpringSettings(springy::Spring);
+pub struct SpringSettings(springy::SpringState<Vec2>);
 
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
@@ -112,10 +112,6 @@ pub fn gravity(time: Res<Time>, mut to_apply: Query<(&mut Impulse, &Gravity)>) {
     }
 }
 
-#[derive(Default, Debug, Copy, Clone, Component, Reflect)]
-#[reflect(Component)]
-pub struct PreviousUnitVector(Option<Vec2>);
-
 pub fn spring_impulse(
     time: Res<Time>,
     mut impulses: Query<&mut Impulse>,
@@ -124,9 +120,8 @@ pub fn spring_impulse(
         &GlobalTransform,
         &Velocity,
         &Mass,
-        &SpringSettings,
+        &mut SpringSettings,
         &Spring,
-        &mut PreviousUnitVector,
     )>,
     particle: Query<(&GlobalTransform, &Velocity, &Mass)>,
 ) {
@@ -141,9 +136,8 @@ pub fn spring_impulse(
         spring_transform,
         spring_velocity,
         spring_mass,
-        spring_settings,
+        mut spring_settings,
         spring,
-        mut previous_unit_vector,
     ) in &mut springs
     {
         let particle_entity = spring.containing;
@@ -154,7 +148,7 @@ pub fn spring_impulse(
             continue;
         }
 
-        let (impulse, unit_vec) = spring_settings.0.impulse(
+        match spring_settings.0.impulse(
             timestep,
             springy::Particle {
                 mass: spring_mass.0,
@@ -166,16 +160,17 @@ pub fn spring_impulse(
                 position: particle_transform.translation().xy(),
                 velocity: particle_velocity.0,
             },
-            previous_unit_vector.0,
-        );
+        ) {
+            springy::SpringResult::Broke => {}
+            springy::SpringResult::Impulse(impulse) => {
+                let [mut spring_impulse, mut particle_impulse] = impulses
+                    .get_many_mut([spring_entity, particle_entity])
+                    .unwrap();
 
-        let [mut spring_impulse, mut particle_impulse] = impulses
-            .get_many_mut([spring_entity, particle_entity])
-            .unwrap();
-
-        spring_impulse.0 -= impulse;
-        particle_impulse.0 += impulse;
-        previous_unit_vector.0 = Some(unit_vec);
+                spring_impulse.0 -= impulse;
+                particle_impulse.0 += impulse;
+            }
+        }
     }
 }
 
@@ -208,7 +203,6 @@ pub fn setup(mut commands: Commands) {
             Impulse::default(),
             Mass::default(),
             Gravity::default(),
-            PreviousUnitVector::default(),
         ))
         .insert(Name::new("Cube 3"))
         .id();
@@ -224,16 +218,15 @@ pub fn setup(mut commands: Commands) {
             Impulse::default(),
             Mass::default(),
             Gravity::default(),
-            PreviousUnitVector::default(),
         ))
         .insert(Name::new("Cube 2"))
         .insert(Spring { containing: cube_3 })
-        .insert(SpringSettings(springy::Spring {
+        .insert(SpringSettings(springy::SpringState::new(springy::Spring {
             rest_distance: 50.0,
             limp_distance: 0.0,
-            strength: 1.0,
+            strength: 0.3,
             damp_ratio: 1.0,
-        }))
+        })))
         .id();
 
     let cube_1 = commands
@@ -248,15 +241,14 @@ pub fn setup(mut commands: Commands) {
             Impulse::default(),
             Mass::default(),
             Gravity::default(),
-            PreviousUnitVector::default(),
         ))
         .insert(Spring { containing: cube_2 })
-        .insert(SpringSettings(springy::Spring {
+        .insert(SpringSettings(springy::SpringState::new(springy::Spring {
             rest_distance: 50.0,
             limp_distance: 0.0,
             strength: 0.33,
             damp_ratio: 1.0,
-        }))
+        })))
         .insert(Name::new("Cube 1"))
         .id();
 
@@ -268,18 +260,13 @@ pub fn setup(mut commands: Commands) {
         })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(0.0, 300.0, 0.0)))
         .insert(Spring { containing: cube_1 })
-        .insert(SpringSettings(springy::Spring {
+        .insert(SpringSettings(springy::SpringState::new(springy::Spring {
             rest_distance: 50.0,
             limp_distance: 0.0,
             strength: 0.01,
             damp_ratio: 1.0,
-        }))
-        .insert_bundle((
-            Velocity::default(),
-            Impulse::default(),
-            Mass(f32::INFINITY),
-            PreviousUnitVector::default(),
-        ))
+        })))
+        .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
         .insert(Name::new("Cube Slot"));
 
     let iterations = 100;
@@ -303,12 +290,7 @@ pub fn setup(mut commands: Commands) {
             .insert_bundle(TransformBundle::from(Transform::from_xyz(
                 300.0, height, 0.0,
             )))
-            .insert_bundle((
-                Velocity::default(),
-                Impulse::default(),
-                Mass::default(),
-                PreviousUnitVector::default(),
-            ))
+            .insert_bundle((Velocity::default(), Impulse::default(), Mass::default()))
             .insert(Name::new("Critical"))
             .id();
 
@@ -324,18 +306,13 @@ pub fn setup(mut commands: Commands) {
             .insert(Spring {
                 containing: damped_cube,
             })
-            .insert(SpringSettings(springy::Spring {
+            .insert(SpringSettings(springy::SpringState::new(springy::Spring {
                 rest_distance: 0.0,
                 limp_distance: 0.0,
                 strength: 0.05,
                 damp_ratio: damped as f32 / 100.0 as f32,
-            }))
-            .insert_bundle((
-                Velocity::default(),
-                Impulse::default(),
-                Mass(f32::INFINITY),
-                PreviousUnitVector::default(),
-            ))
+            })))
+            .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
             .insert(Name::new("Critical Slot"));
     }
 }
