@@ -67,27 +67,39 @@ where
 pub struct SpringBreak {
     /// Current status of the breaking spring.
     #[inspectable(min = 0.0, max = 1.0, speed = 0.05)]
-    pub current_tear: f32,
+    pub tear: f32,
     /// Force required to start tearing spring off.
     #[inspectable(min = 0.0, max = 100.0, speed = 1.0)]
-    pub tear_force: f32,
+    pub force: f32,
     /// Amount to step tearing each timestep (multiplied by timestep).
     #[inspectable(min = 0.0, max = 1.0, speed = 0.01)]
-    pub tear_step: f32,
+    pub step: f32,
+    /// Amount to heal tearing each timestep (multiplied by timestep).
+    #[inspectable(min = 0.0, max = 1.0, speed = 0.01)]
+    pub heal_step: f32,
+}
+
+impl Default for SpringBreak {
+    fn default() -> Self {
+        Self {
+            tear: 0.0,
+            force: 1.0,
+            step: 0.01,
+            heal_step: 0.01,
+        }
+    }
 }
 
 impl SpringBreak {
     pub fn impulse<S: Springable>(&mut self, impulse: S) -> bool {
         let impulse_length = impulse.springable_length();
-        info!(
-            "length: {:?}, threshold: {:?}, current: {:?}",
-            impulse_length, self.tear_force, self.current_tear
-        );
         if impulse_length >= self.tear_force {
             self.current_tear += self.tear_step;
-            //self.current_tear.clamp(0.0, 1.0);
+        } else {
+            self.current_tear -= self.heal_step;
         }
 
+        self.current_tear.clamp(0.0, 1.0);
         self.current_tear >= 1.0
     }
 }
