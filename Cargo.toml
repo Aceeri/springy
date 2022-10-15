@@ -42,3 +42,7 @@ required-features = ["rapier2d"]
 [[example]]
 name = "simple"
 path = "examples/bevy_simple.rs"
+
+[[example]]
+name = "energy"
+path = "examples/energy.rs"
