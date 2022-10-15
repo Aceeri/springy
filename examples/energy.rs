@@ -202,8 +202,8 @@ pub fn setup(mut commands: Commands) {
     let original_location = Vec3::new(0.0, 0.0, 0.0);
     let location_step = Vec3::new(50.0, 0.0, 0.0);
 
-    let from = 0.0002;
-    let to = 0.0004;
+    let from = 0.0000;
+    let to = 0.0002;
     let step = 0.00001;
 
     let mut current = from;
