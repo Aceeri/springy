@@ -41,12 +41,12 @@ pub struct Spring {
 
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
-pub struct SpringSettings(springy::Spring);
+pub struct SpringSettings(springy::SpringState<Vec2>);
 
 pub fn spring_impulse(
     time: Res<Time>,
     mut impulses: Query<&mut ExternalImpulse>,
-    springs: Query<(Entity, &SpringSettings, &Spring)>,
+    mut springs: Query<(Entity, &mut SpringSettings, &Spring)>,
     particle: Query<springy::RapierParticleQuery>,
 ) {
     if time.delta_seconds() == 0.0 {
@@ -55,7 +55,7 @@ pub fn spring_impulse(
 
     let timestep = TICK_RATE;
 
-    for (spring_entity, spring_settings, spring) in &springs {
+    for (spring_entity, mut spring_settings, spring) in &mut springs {
         let particle_entity = spring.containing;
         let particle_a = particle.get(spring_entity).unwrap();
         let particle_b = particle.get(particle_entity).unwrap();
@@ -64,14 +64,17 @@ pub fn spring_impulse(
             continue;
         }
 
-        let (impulse, _) = spring_settings.0.impulse(timestep, particle_a, particle_b, None);
+        match spring_settings.0.impulse(timestep, particle_a, particle_b) {
+            springy::SpringResult::Impulse(impulse) => {
+                let [mut spring_impulse, mut particle_impulse] = impulses
+                    .get_many_mut([spring_entity, particle_entity])
+                    .unwrap();
 
-        let [mut spring_impulse, mut particle_impulse] = impulses
-            .get_many_mut([spring_entity, particle_entity])
-            .unwrap();
-
-        spring_impulse.impulse = -impulse;
-        particle_impulse.impulse = impulse;
+                spring_impulse.impulse = -impulse;
+                particle_impulse.impulse = impulse;
+            }
+            _ => {}
+        }
     }
 }
 
@@ -135,12 +138,12 @@ pub fn setup_physics(mut commands: Commands) {
         })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
         .insert(Spring { containing: cube_1 })
-        .insert(SpringSettings(springy::Spring {
+        .insert(SpringSettings(springy::SpringState::new(springy::Spring {
             rest_distance: 5.0,
             limp_distance: 5.0,
             strength: 1.0,
             damp_ratio: 1.0,
-        }))
+        })))
         .insert_bundle((
             //RigidBody::Dynamic,
             Velocity::default(),
