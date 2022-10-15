@@ -29,6 +29,8 @@ fn main() {
         .register_type::<Mass>()
         .register_type::<Velocity>()
         .register_type::<SpringSettings>()
+        .register_type::<springy::SpringBreak>()
+        .register_type::<Option<springy::SpringBreak>>()
         .run();
 }
 
@@ -39,12 +41,12 @@ fn setup_graphics(mut commands: Commands) {
     });
 }
 
-#[derive(Debug, Copy, Clone, Component)]
+#[derive(Debug, Clone, Component)]
 pub struct Spring {
     pub containing: Entity,
 }
 
-#[derive(Default, Debug, Copy, Clone, Component, Reflect)]
+#[derive(Default, Debug, Clone, Component, Reflect)]
 #[reflect(Component)]
 pub struct SpringSettings(springy::SpringState<Vec2>);
 
@@ -113,6 +115,7 @@ pub fn gravity(time: Res<Time>, mut to_apply: Query<(&mut Impulse, &Gravity)>) {
 }
 
 pub fn spring_impulse(
+    mut commands: Commands,
     time: Res<Time>,
     mut impulses: Query<&mut Impulse>,
     mut springs: Query<(
@@ -161,7 +164,9 @@ pub fn spring_impulse(
                 velocity: particle_velocity.0,
             },
         ) {
-            springy::SpringResult::Broke => {}
+            springy::SpringResult::Broke => {
+                commands.entity(spring_entity).remove::<Spring>();
+            }
             springy::SpringResult::Impulse(impulse) => {
                 let [mut spring_impulse, mut particle_impulse] = impulses
                     .get_many_mut([spring_entity, particle_entity])
@@ -221,12 +226,20 @@ pub fn setup(mut commands: Commands) {
         ))
         .insert(Name::new("Cube 2"))
         .insert(Spring { containing: cube_3 })
-        .insert(SpringSettings(springy::SpringState::new(springy::Spring {
-            rest_distance: 50.0,
-            limp_distance: 0.0,
-            strength: 0.3,
-            damp_ratio: 1.0,
-        })))
+        .insert(SpringSettings(springy::SpringState {
+            spring: springy::Spring {
+                rest_distance: 50.0,
+                limp_distance: 0.0,
+                strength: 0.3,
+                damp_ratio: 1.0,
+            },
+            breaking: Some(springy::SpringBreak {
+                tear_force: 50.00,
+                tear_step: 0.01,
+                ..default()
+            }),
+            ..default()
+        }))
         .id();
 
     let cube_1 = commands

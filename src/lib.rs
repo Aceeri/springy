@@ -36,12 +36,14 @@ pub struct Spring {
     pub limp_distance: f32,
 }
 
-#[derive(Default, Debug, Copy, Clone, Component, Reflect, Inspectable)]
+#[derive(Default, Debug, Clone, Component, Reflect, Inspectable)]
 pub struct SpringState<S>
 where
     S: Springable,
 {
     /// Last unit vector so that damping knows what to dampen.
+    #[inspectable(ignore)]
+    #[reflect(ignore)]
     pub last_unit_vector: Option<S>,
     /// Parameters under which the spring should break.
     pub breaking: Option<SpringBreak>,
@@ -61,7 +63,7 @@ where
     }
 }
 
-#[derive(Default, Debug, Copy, Clone, Component, Reflect, Inspectable)]
+#[derive(Default, Debug, Clone, Component, Reflect, Inspectable)]
 pub struct SpringBreak {
     /// Current status of the breaking spring.
     #[inspectable(min = 0.0, max = 1.0, speed = 0.05)]
@@ -77,9 +79,13 @@ pub struct SpringBreak {
 impl SpringBreak {
     pub fn impulse<S: Springable>(&mut self, impulse: S) -> bool {
         let impulse_length = impulse.springable_length();
-        if self.tear_force > impulse_length {
+        info!(
+            "length: {:?}, threshold: {:?}, current: {:?}",
+            impulse_length, self.tear_force, self.current_tear
+        );
+        if impulse_length >= self.tear_force {
             self.current_tear += self.tear_step;
-            self.current_tear.clamp(0.0, 1.0);
+            //self.current_tear.clamp(0.0, 1.0);
         }
 
         self.current_tear >= 1.0
