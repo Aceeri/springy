@@ -226,7 +226,7 @@ where
         };
 
         if broke {
-            SpringResult::Broke
+            SpringResult::Broke(impulse)
         } else {
             SpringResult::Impulse(impulse)
         }
