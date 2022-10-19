@@ -198,7 +198,7 @@ where
     S: Springable,
 {
     Impulse(S),
-    Broke,
+    Broke(S),
 }
 
 impl<S> SpringState<S>
