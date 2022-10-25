@@ -9,6 +9,9 @@ use crate::Particle;
 use bevy::ecs::query::WorldQuery;
 use bevy::math::Vec3Swizzles;
 
+#[derive(Default, Debug, Clone, Component)]
+pub struct ExtendedMass(pub f32);
+
 #[derive(WorldQuery)]
 pub struct RapierParticleQuery<'a> {
     pub entity: Entity,
@@ -16,6 +19,7 @@ pub struct RapierParticleQuery<'a> {
     pub rigid_body: Option<&'a RigidBody>,
     pub velocity: Option<&'a Velocity>,
     pub mass: Option<&'a ReadMassProperties>,
+    pub extended_mass: Option<&'a ExtendedMass>,
     pub name: Option<&'a Name>,
 }
 
@@ -59,20 +63,22 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
     }
 
     pub fn mass(&self) -> f32 {
+        let extended = self.extended_mass.unwrap_or(0.0);
+
         match self.rigid_body {
             Some(rigid_body @ RigidBody::Dynamic) => match self.mass {
-                Some(mass) => mass.0.mass,
+                Some(mass) => mass.0.mass + extended,
                 _ => {
                     warn!(
-                        "{:?} rigidbody for {:?} needs a `readmassproperties` component for spring damping",
+                        "{:?} rigidbody for {:?} needs a `ReadMassProperties` component for spring damping",
                         rigid_body,
                         self.name()
                     );
-                    1.0
+                    1.0 + extended
                 }
             },
             Some(_) => f32::INFINITY,
-            _ => 1.0,
+            _ => 1.0 + extended,
         }
     }
 

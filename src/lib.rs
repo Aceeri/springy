@@ -232,7 +232,16 @@ where
         }
     }
 }
+
 impl Spring {
+    pub fn strength(&self) -> f32 {
+        self.strength.clamp(0.0, 1.0)
+    }
+
+    pub fn damp_ratio(&self) -> f32 {
+        self.damp_ratio.clamp(0.0, 20.0)
+    }
+
     /// Impulse required to satisfy the spring constraint.
     ///
     /// This makes assumptions that the integrator for your physics is symplectic Euler.
@@ -269,9 +278,9 @@ impl Spring {
 
         let reduced_mass = 1.0 / (particle_a.inverse_mass() + particle_b.inverse_mass());
 
-        let damping = self.damp_ratio * 2.0 * self.strength.sqrt();
+        let damping = self.damp_ratio() * 2.0 * self.strength().sqrt();
 
-        let distance_impulse = distance_error * self.strength * inverse_timestep * reduced_mass;
+        let distance_impulse = distance_error * self.strength() * inverse_timestep * reduced_mass;
         let velocity_impulse = velocity_error * damping.clamp(0.0, 1.0) * reduced_mass;
 
         let impulse = -(distance_impulse + velocity_impulse);
