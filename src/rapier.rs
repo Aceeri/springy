@@ -63,7 +63,7 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
     }
 
     pub fn mass(&self) -> f32 {
-        let extended = self.extended_mass.unwrap_or(0.0);
+        let extended = self.extended_mass.map(|s| s.0).unwrap_or(0.0);
 
         match self.rigid_body {
             Some(rigid_body @ RigidBody::Dynamic) => match self.mass {
