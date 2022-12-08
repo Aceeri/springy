@@ -12,7 +12,7 @@ pub mod rapier;
 #[cfg(any(feature = "rapier2d", feature = "rapier3d"))]
 pub use rapier::RapierParticleQuery;
 
-#[derive(Default, Debug, Copy, Clone, Component, Reflect, Inspectable)]
+#[derive(Default, Debug, Copy, Clone, Component, Reflect, FromReflect, Inspectable)]
 #[reflect(Component)]
 pub struct Spring {
     /// Strength of the spring-like impulse. This is a range between 0 and 1
@@ -63,7 +63,8 @@ where
     }
 }
 
-#[derive(Debug, Clone, Component, Reflect, Inspectable)]
+#[derive(Debug, Clone, Component, Reflect, FromReflect, Inspectable)]
+#[reflect(Component)]
 pub struct SpringBreak {
     /// Current status of the breaking spring.
     #[inspectable(min = 0.0, max = 1.0, speed = 0.05)]
