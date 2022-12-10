@@ -28,7 +28,7 @@ fn main() {
 }
 
 fn setup_graphics(mut commands: Commands) {
-    commands.spawn_bundle(Camera2dBundle {
+    commands.spawn(Camera2dBundle {
         transform: Transform::from_xyz(0.0, 20.0, 0.0),
         ..default()
     });
@@ -86,7 +86,7 @@ pub fn setup_physics(mut commands: Commands) {
     let ground_height = 10.0;
 
     commands
-        .spawn_bundle(TransformBundle::from(Transform::from_xyz(
+        .spawn(TransformBundle::from(Transform::from_xyz(
             0.0,
             -ground_height - 100.0,
             0.0,
@@ -115,12 +115,12 @@ pub fn setup_physics(mut commands: Commands) {
 
     let cube_1 = commands
         .spawn()
-        .insert_bundle(SpriteBundle {
+        .insert(SpriteBundle {
             sprite: sprite,
             ..default()
         })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
-        .insert_bundle((
+        .insert(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
+        .insert((
             RigidBody::Dynamic,
             Velocity::default(),
             ExternalImpulse::default(),
@@ -132,11 +132,11 @@ pub fn setup_physics(mut commands: Commands) {
 
     let cube_slot = commands
         .spawn()
-        .insert_bundle(SpriteBundle {
+        .insert(SpriteBundle {
             sprite: slot,
             ..default()
         })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
+        .insert(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
         .insert(Spring { containing: cube_1 })
         .insert(SpringSettings(springy::SpringState::new(springy::Spring {
             rest_distance: 5.0,
@@ -144,7 +144,7 @@ pub fn setup_physics(mut commands: Commands) {
             strength: 1.0,
             damp_ratio: 1.0,
         })))
-        .insert_bundle((
+        .insert((
             //RigidBody::Dynamic,
             Velocity::default(),
             ExternalImpulse::default(),
@@ -154,8 +154,8 @@ pub fn setup_physics(mut commands: Commands) {
         .insert(Name::new("Cube Slot"));
 
     commands
-        .spawn_bundle(TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)))
-        .insert_bundle((
+        .spawn(TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)))
+        .insert((
             RigidBody::Dynamic,
             Velocity::default(),
             ExternalImpulse::default(),

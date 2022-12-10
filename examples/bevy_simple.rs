@@ -35,7 +35,7 @@ fn main() {
 }
 
 fn setup_graphics(mut commands: Commands) {
-    commands.spawn_bundle(Camera2dBundle {
+    commands.spawn(Camera2dBundle {
         transform: Transform::from_xyz(0.0, 300.0, 0.0),
         ..default()
     });
@@ -199,11 +199,11 @@ pub fn setup(mut commands: Commands) {
 
     let cube_3 = commands
         .spawn()
-        .insert_bundle(SpriteBundle {
+        .insert(SpriteBundle {
             sprite: sprite.clone(),
             ..default()
         })
-        .insert_bundle((
+        .insert((
             Velocity::default(),
             Impulse::default(),
             Mass::default(),
@@ -214,11 +214,11 @@ pub fn setup(mut commands: Commands) {
 
     let cube_2 = commands
         .spawn()
-        .insert_bundle(SpriteBundle {
+        .insert(SpriteBundle {
             sprite: sprite.clone(),
             ..default()
         })
-        .insert_bundle((
+        .insert((
             Velocity::default(),
             Impulse::default(),
             Mass::default(),
@@ -244,12 +244,12 @@ pub fn setup(mut commands: Commands) {
 
     let cube_1 = commands
         .spawn()
-        .insert_bundle(SpriteBundle {
+        .insert(SpriteBundle {
             sprite: sprite.clone(),
             ..default()
         })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
-        .insert_bundle((
+        .insert(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
+        .insert((
             Velocity::default(),
             Impulse::default(),
             Mass::default(),
@@ -267,11 +267,11 @@ pub fn setup(mut commands: Commands) {
 
     let cube_slot = commands
         .spawn()
-        .insert_bundle(SpriteBundle {
+        .insert(SpriteBundle {
             sprite: slot.clone(),
             ..default()
         })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(0.0, 300.0, 0.0)))
+        .insert(TransformBundle::from(Transform::from_xyz(0.0, 300.0, 0.0)))
         .insert(Spring { containing: cube_1 })
         .insert(SpringSettings(springy::SpringState::new(springy::Spring {
             rest_distance: 50.0,
@@ -279,7 +279,7 @@ pub fn setup(mut commands: Commands) {
             strength: 0.01,
             damp_ratio: 1.0,
         })))
-        .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
+        .insert((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
         .insert(Name::new("Cube Slot"));
 
     let iterations = 100;
@@ -296,24 +296,24 @@ pub fn setup(mut commands: Commands) {
         let height = damped as f32 * (size + 1.0);
         let damped_cube = commands
             .spawn()
-            .insert_bundle(SpriteBundle {
+            .insert(SpriteBundle {
                 sprite: damped_sprite.clone(),
                 ..default()
             })
-            .insert_bundle(TransformBundle::from(Transform::from_xyz(
+            .insert(TransformBundle::from(Transform::from_xyz(
                 300.0, height, 0.0,
             )))
-            .insert_bundle((Velocity::default(), Impulse::default(), Mass::default()))
+            .insert((Velocity::default(), Impulse::default(), Mass::default()))
             .insert(Name::new("Critical"))
             .id();
 
         let critical_slot = commands
             .spawn()
-            .insert_bundle(SpriteBundle {
+            .insert(SpriteBundle {
                 sprite: slot.clone(),
                 ..default()
             })
-            .insert_bundle(TransformBundle::from(Transform::from_xyz(
+            .insert(TransformBundle::from(Transform::from_xyz(
                 100.0, height, 0.0,
             )))
             .insert(Spring {
@@ -325,7 +325,7 @@ pub fn setup(mut commands: Commands) {
                 strength: 0.05,
                 damp_ratio: damped as f32 / 100.0 as f32,
             })))
-            .insert_bundle((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
+            .insert((Velocity::default(), Impulse::default(), Mass(f32::INFINITY)))
             .insert(Name::new("Critical Slot"));
     }
 }

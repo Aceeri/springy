@@ -36,7 +36,7 @@ pub struct Spring {
     pub limp_distance: f32,
 }
 
-#[derive(Default, Debug, Clone, Component, Reflect, Inspectable)]
+#[derive(Default, Debug, Clone, Component, Reflect, FromReflect, Inspectable)]
 pub struct SpringState<S>
 where
     S: Springable,

@@ -34,7 +34,7 @@ fn main() {
 }
 
 fn setup_graphics(mut commands: Commands) {
-    commands.spawn_bundle(Camera2dBundle {
+    commands.spawn(Camera2dBundle {
         transform: Transform::from_xyz(0.0, 300.0, 0.0),
         ..default()
     });
@@ -215,25 +215,25 @@ pub fn setup(mut commands: Commands) {
 
         let starting = commands
             .spawn()
-            .insert_bundle(SpriteBundle {
+            .insert(SpriteBundle {
                 sprite: slot.clone(),
                 ..default()
             })
-            .insert_bundle(TransformBundle::from(Transform::from_translation(
+            .insert(TransformBundle::from(Transform::from_translation(
                 original_location,
             )))
             .insert(Name::new(format!("{:?} Starting", ratio)));
 
         let cube_1 = commands
             .spawn()
-            .insert_bundle(SpriteBundle {
+            .insert(SpriteBundle {
                 sprite: sprite.clone(),
                 ..default()
             })
-            .insert_bundle(TransformBundle::from(Transform::from_translation(
+            .insert(TransformBundle::from(Transform::from_translation(
                 original_location,
             )))
-            .insert_bundle((
+            .insert((
                 Velocity::default(),
                 Impulse::default(),
                 Mass::default(),
@@ -246,11 +246,11 @@ pub fn setup(mut commands: Commands) {
         info!("trying min damping ratio of {:?}", ratio,);
         let cube_slot = commands
             .spawn()
-            .insert_bundle(SpriteBundle {
+            .insert(SpriteBundle {
                 sprite: slot.clone(),
                 ..default()
             })
-            .insert_bundle(TransformBundle::from(Transform::from_translation(
+            .insert(TransformBundle::from(Transform::from_translation(
                 slot_location,
             )))
             .insert(Spring { containing: cube_1 })
@@ -260,7 +260,7 @@ pub fn setup(mut commands: Commands) {
                 strength: 0.05,
                 damp_ratio: ratio,
             }))
-            .insert_bundle((
+            .insert((
                 Velocity::default(),
                 Impulse::default(),
                 Mass(f32::INFINITY),
