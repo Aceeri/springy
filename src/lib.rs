@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_inspector_egui::Inspectable;
+use bevy_inspector_egui::prelude::*;
 
 pub mod prelude {
     #[cfg(any(feature = "rapier2d", feature = "rapier3d"))]
@@ -12,12 +12,12 @@ pub mod rapier;
 #[cfg(any(feature = "rapier2d", feature = "rapier3d"))]
 pub use rapier::RapierParticleQuery;
 
-#[derive(Default, Debug, Copy, Clone, Component, Reflect, FromReflect, Inspectable)]
-#[reflect(Component)]
+#[derive(Default, Debug, Copy, Clone, Component, Reflect, FromReflect, InspectorOptions)]
+#[reflect(Component, InspectorOptions)]
 pub struct Spring {
     /// Strength of the spring-like impulse. This is a range between 0 and 1
     /// where 1 will bring the spring to equilibrium in 1 timestep.
-    #[inspectable(min = 0.0, max = 1.0, speed = 0.01)]
+    #[inspector(min = 0.0, max = 1.0, speed = 0.01)]
     pub strength: f32,
     /// Damping of the spring-like impulse. <1 will be treated as under-dampened
     /// and will overshoot the target, >=1 will be treated as critically dampened
@@ -25,24 +25,23 @@ pub struct Spring {
     ///
     /// Note this will not be completely respected to avoid instability in the spring.
     /// So overshooting *may* happen if you have a really high strength value.
-    #[inspectable(min = 0.0, max = 4.0, speed = 0.05)]
+    #[inspector(min = 0.0, max = 4.0, speed = 0.05)]
     pub damp_ratio: f32,
     /// Rest distance around the particle, it will try to push the particle out
     /// when too close.
-    #[inspectable(min = 0.0)]
+    #[inspector(min = 0.0)]
     pub rest_distance: f32,
     /// Similar to rest distance except it will not push outwards if it is too close.
-    #[inspectable(min = 0.0)]
+    #[inspector(min = 0.0)]
     pub limp_distance: f32,
 }
 
-#[derive(Default, Debug, Clone, Component, Reflect, FromReflect, Inspectable)]
+#[derive(Default, Debug, Clone, Component, Reflect, FromReflect)]
 pub struct SpringState<S>
 where
     S: Springable,
 {
     /// Last unit vector so that damping knows what to dampen.
-    #[inspectable(ignore)]
     #[reflect(ignore)]
     pub last_unit_vector: Option<S>,
     /// Parameters under which the spring should break.
@@ -63,20 +62,20 @@ where
     }
 }
 
-#[derive(Debug, Clone, Component, Reflect, FromReflect, Inspectable)]
-#[reflect(Component)]
+#[derive(Debug, Clone, Component, Reflect, FromReflect, InspectorOptions)]
+#[reflect(Component, InspectorOptions)]
 pub struct SpringBreak {
     /// Current status of the breaking spring.
-    #[inspectable(min = 0.0, max = 1.0, speed = 0.05)]
+    #[inspector(min = 0.0, max = 1.0, speed = 0.05)]
     pub tear: f32,
     /// Force required to start tearing spring off.
-    #[inspectable(min = 0.0, max = 100.0, speed = 1.0)]
+    #[inspector(min = 0.0, max = 100.0, speed = 1.0)]
     pub tear_force: f32,
     /// Amount to step tearing each timestep (multiplied by timestep).
-    #[inspectable(min = 0.0, max = 1.0, speed = 0.01)]
+    #[inspector(min = 0.0, max = 1.0, speed = 0.01)]
     pub tear_step: f32,
     /// Amount to heal tearing each timestep (multiplied by timestep).
-    #[inspectable(min = 0.0, max = 1.0, speed = 0.01)]
+    #[inspector(min = 0.0, max = 1.0, speed = 0.01)]
     pub heal_step: f32,
 }
 
@@ -129,7 +128,6 @@ pub trait Springable:
     + Sync
     + std::fmt::Debug
     + Reflect
-    + Inspectable
     + 'static
 {
     fn springable_length(self) -> f32;
