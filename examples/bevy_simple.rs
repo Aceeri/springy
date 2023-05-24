@@ -2,7 +2,7 @@ use bevy::math::Vec3Swizzles;
 //use bevy::time::FixedTimestep;
 use bevy::{prelude::*, window::PresentMode};
 
-const TICK_RATE: f64 = 1.0 / 100.0;
+const TICK_RATE: f64 = 1.0 / 20.0;
 const VISUAL_SLOWDOWN: f64 = 1.0;
 
 fn main() {
@@ -12,13 +12,15 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_editor_pls::EditorPlugin::new())
         .add_startup_system(setup_graphics)
-        .add_startup_system(setup)
+        .add_startup_system(setup_rope)
+        .add_startup_system(setup_translation)
+        .add_startup_system(setup_rotational)
         .add_systems(
             (
                 symplectic_euler,
                 spring_impulse.before(symplectic_euler),
                 gravity.before(symplectic_euler),
-            ), //.with_run_criteria(FixedTimestep::step(TICK_RATE * VISUAL_SLOWDOWN))
+            ),
         )
         .register_type::<Impulse>()
         .register_type::<Gravity>()
@@ -149,33 +151,34 @@ pub fn spring_impulse(
         if particle_entity == spring_entity {
             continue;
         }
-
-        let (impulse, unit_vec) = spring_settings.0.impulse(
-            timestep,
-            springy::Particle {
-                inertia: Vec2::splat(spring_mass.0),
-                position: spring_transform.translation().xy(),
+        let particle_a = 
+            springy::TranslationParticle2 {
+                mass: spring_mass.0,
+                translation: spring_transform.translation().xy(),
                 velocity: spring_velocity.0,
-            },
-            springy::Particle {
-                inertia: Vec2::splat(particle_mass.0),
-                position: particle_transform.translation().xy(),
+            };
+        let particle_b = springy::TranslationParticle2 {
+                mass: particle_mass.0,
+                translation: particle_transform.translation().xy(),
                 velocity: particle_velocity.0,
-            },
-            previous_unit_vector.0,
+            };
+
+        let instant = particle_a.instant(&particle_b);
+        let impulse = spring_settings.0.impulse(
+            timestep,
+            instant,
         );
 
         let [mut spring_impulse, mut particle_impulse] = impulses
             .get_many_mut([spring_entity, particle_entity])
             .unwrap();
 
-        spring_impulse.0 -= impulse;
-        particle_impulse.0 += impulse;
-        //previous_unit_vector.0 = Some(unit_vec);
+        spring_impulse.0 += impulse;
+        particle_impulse.0 -= impulse;
     }
 }
 
-pub fn setup(mut commands: Commands) {
+pub fn setup_rope(mut commands: Commands) {
     let size = 20.0;
     let sprite = Sprite {
         color: Color::BLUE,
@@ -225,8 +228,6 @@ pub fn setup(mut commands: Commands) {
         .insert(Name::new("Cube 2"))
         .insert(Spring { containing: cube_3 })
         .insert(SpringSettings(springy::Spring {
-            rest_distance: 50.0,
-            limp_distance: 0.0,
             strength: 0.05,
             damp_ratio: 1.0,
         }))
@@ -247,8 +248,6 @@ pub fn setup(mut commands: Commands) {
         ))
         .insert(Spring { containing: cube_2 })
         .insert(SpringSettings(springy::Spring {
-            rest_distance: 50.0,
-            limp_distance: 0.0,
             strength: 0.05,
             damp_ratio: 1.0,
         }))
@@ -263,8 +262,6 @@ pub fn setup(mut commands: Commands) {
         .insert(TransformBundle::from(Transform::from_xyz(0.0, 300.0, 0.0)))
         .insert(Spring { containing: cube_1 })
         .insert(SpringSettings(springy::Spring {
-            rest_distance: 50.0,
-            limp_distance: 0.0,
             strength: 0.05,
             damp_ratio: 1.0,
         }))
@@ -275,20 +272,43 @@ pub fn setup(mut commands: Commands) {
             PreviousUnitVector::default(),
         ))
         .insert(Name::new("Cube Slot"));
+    }
 
-    let iterations = 100;
+
+pub fn setup_translation(mut commands: Commands) {
+    let size = 20.0;
+    let sprite = Sprite {
+        color: Color::BLUE,
+        flip_x: false,
+        flip_y: false,
+        custom_size: Some(Vec2::new(size, size)),
+        rect: None,
+        anchor: Default::default(),
+    };
+
+    let slot = Sprite {
+        color: Color::RED,
+        flip_x: false,
+        flip_y: false,
+        custom_size: Some(Vec2::new(size / 4.0, size / 4.0)),
+        rect: None,
+        anchor: Default::default(),
+    };
+
+    let iterations = 500;
+    let height = 500.0;
     for damped in 0..iterations {
-        let size = 5.0;
+        let size = height / iterations as f32;
         let damped_sprite = Sprite {
             color: Color::YELLOW,
             flip_x: false,
             flip_y: false,
-            custom_size: Some(Vec2::new(size, size)),
+            custom_size: Some(Vec2::new(5.0, size)),
             rect: None,
             anchor: Default::default(),
         };
 
-        let height = damped as f32 * (size + 1.0);
+        let height = damped as f32 * size;
         let damped_cube = commands
             .spawn(SpriteBundle {
                 sprite: damped_sprite.clone(),
@@ -318,10 +338,8 @@ pub fn setup(mut commands: Commands) {
                 containing: damped_cube,
             })
             .insert(SpringSettings(springy::Spring {
-                rest_distance: 0.0,
-                limp_distance: 0.0,
                 strength: 0.05,
-                damp_ratio: damped as f32 / 100.0 as f32,
+                damp_ratio: damped as f32 / iterations as f32,
             }))
             .insert((
                 Velocity::default(),
@@ -332,3 +350,81 @@ pub fn setup(mut commands: Commands) {
             .insert(Name::new("Critical Slot"));
     }
 }
+
+pub fn setup_rotational(mut commands: Commands) {
+    let size = 20.0;
+    let sprite = Sprite {
+        color: Color::BLUE,
+        flip_x: false,
+        flip_y: false,
+        custom_size: Some(Vec2::new(size, size)),
+        rect: None,
+        anchor: Default::default(),
+    };
+
+    let slot = Sprite {
+        color: Color::RED,
+        flip_x: false,
+        flip_y: false,
+        custom_size: Some(Vec2::new(size / 4.0, size / 4.0)),
+        rect: None,
+        anchor: Default::default(),
+    };
+
+    let iterations = 500;
+    let height = 500.0;
+    for damped in 0..iterations {
+        let size = height / iterations as f32;
+        let damped_sprite = Sprite {
+            color: Color::YELLOW,
+            flip_x: false,
+            flip_y: false,
+            custom_size: Some(Vec2::new(5.0, size)),
+            rect: None,
+            anchor: Default::default(),
+        };
+
+        let height = damped as f32 * size;
+        let damped_cube = commands
+            .spawn(SpriteBundle {
+                sprite: damped_sprite.clone(),
+                ..default()
+            })
+            .insert(TransformBundle::from(Transform::from_xyz(
+                -300.0, height, 0.0,
+            )))
+            .insert((
+                Velocity::default(),
+                Impulse::default(),
+                Mass::default(),
+                PreviousUnitVector::default(),
+            ))
+            .insert(Name::new("Critical"))
+            .id();
+
+        let critical_slot = commands
+            .spawn(SpriteBundle {
+                sprite: slot.clone(),
+                ..default()
+            })
+            .insert(TransformBundle::from(Transform::from_xyz(
+                -300.0, height, 0.0,
+            )))
+            .insert(Spring {
+                containing: damped_cube,
+            })
+            .insert(SpringSettings(springy::Spring {
+                strength: 0.05,
+                damp_ratio: damped as f32 / iterations as f32,
+            }))
+            .insert((
+                Velocity::default(),
+                Impulse::default(),
+                Mass(f32::INFINITY),
+                PreviousUnitVector::default(),
+            ))
+            .insert(Name::new("Critical Slot"));
+    }
+}
+
+
