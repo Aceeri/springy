@@ -130,7 +130,7 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
             position: self.global_transform.translation().xy(),
 
             velocity: linvel,
-            mass: self.mass(),
+            inertia: Unit::splat(self.mass()),
         }
     }
 }

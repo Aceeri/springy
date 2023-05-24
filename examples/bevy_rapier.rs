@@ -13,7 +13,7 @@ fn main() {
         )))
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
-        .add_plugin(bevy_editor_pls::EditorPlugin)
+        .add_plugin(bevy_editor_pls::EditorPlugin::new())
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(10.0))
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_startup_system(setup_graphics)
