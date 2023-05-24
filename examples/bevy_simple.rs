@@ -69,7 +69,7 @@ impl Default for Inertia {
     fn default() -> Self {
         Self {
             linear: 1.0,
-            angular: 1.0,
+            angular: 0.01,
         }
     }
 }
@@ -121,7 +121,7 @@ pub fn symplectic_euler(
         velocity.angular += impulse.angular * inertia.inverse_angular();
 
         position.translation += velocity.linear.extend(0.0) * TICK_RATE as f32;
-        //position.rotation += velocity.angular.extend(0.0) * TICK_RATE as f32;
+        position.rotate_z(velocity.angular * TICK_RATE as f32);
 
         impulse.linear = Vec2::ZERO;
         impulse.angular = 0.0;
@@ -179,26 +179,49 @@ pub fn spring_impulse(
         if particle_entity == spring_entity {
             continue;
         }
+
+        let (_, spring_rotation, spring_translation) = spring_transform.to_scale_rotation_translation();
         let particle_a = springy::TranslationParticle2 {
             mass: spring_mass.linear,
-            translation: spring_transform.translation().xy(),
+            translation: spring_translation.xy(),
             velocity: spring_velocity.linear,
         };
+
+        let unit_vector = spring_rotation * Vec3::X;
+        let angular_particle_a = springy::AngularParticle2 {
+            inertia: spring_mass.angular,
+            rotation: unit_vector.y.atan2(unit_vector.x),
+            velocity: spring_velocity.angular,
+        };
+
+        let (_, particle_rotation, particle_translation) = particle_transform.to_scale_rotation_translation();
         let particle_b = springy::TranslationParticle2 {
             mass: particle_mass.linear,
-            translation: particle_transform.translation().xy(),
+            translation: particle_translation.xy(),
             velocity: particle_velocity.linear,
+        };
+
+        let unit_vector_b = particle_rotation * Vec3::X;
+        let angular_particle_b = springy::AngularParticle2 {
+            inertia: particle_mass.angular,
+            rotation: unit_vector_b.y.atan2(unit_vector_b.x),
+            velocity: particle_velocity.angular,
         };
 
         let instant = particle_a.instant(&particle_b);
         let impulse = spring_settings.0.impulse(timestep, instant);
+
+        let angular_instant = angular_particle_a.instant(&angular_particle_b);
+        let angular_impulse = spring_settings.0.impulse(timestep, angular_instant);
 
         let [mut spring_impulse, mut particle_impulse] = impulses
             .get_many_mut([spring_entity, particle_entity])
             .unwrap();
 
         spring_impulse.linear += impulse;
+        spring_impulse.angular += angular_impulse;
         particle_impulse.linear -= impulse;
+        particle_impulse.angular -= angular_impulse;
     }
 }
 
@@ -346,7 +369,7 @@ pub fn setup_translation(mut commands: Commands) {
                 Inertia::default(),
                 PreviousUnitVector::default(),
             ))
-            .insert(Name::new("Critical"))
+            .insert(Name::new(format!("Translational {}", height)))
             .id();
 
         let critical_slot = commands
@@ -370,7 +393,7 @@ pub fn setup_translation(mut commands: Commands) {
                 Inertia::INFINITY,
                 PreviousUnitVector::default(),
             ))
-            .insert(Name::new("Critical Slot"));
+            .insert(Name::new("Trans Critical Slot"));
     }
 }
 
@@ -394,7 +417,7 @@ pub fn setup_rotational(mut commands: Commands) {
         anchor: Default::default(),
     };
 
-    let iterations = 500;
+    let iterations = 50;
     let height = 500.0;
     for damped in 0..iterations {
         let size = height / iterations as f32;
@@ -417,12 +440,15 @@ pub fn setup_rotational(mut commands: Commands) {
                 -300.0, height, 0.0,
             )))
             .insert((
-                Velocity::default(),
+                Velocity {
+                    angular: 0.1,
+                    ..default()
+                },
                 Impulse::default(),
                 Inertia::default(),
                 PreviousUnitVector::default(),
             ))
-            .insert(Name::new("Critical"))
+            .insert(Name::new(format!("Rotational {}", height)))
             .id();
 
         let critical_slot = commands
@@ -446,6 +472,6 @@ pub fn setup_rotational(mut commands: Commands) {
                 Inertia::INFINITY,
                 PreviousUnitVector::default(),
             ))
-            .insert(Name::new("Critical Slot"));
+            .insert(Name::new(format!("Rotational {} Slot", height)));
     }
 }
