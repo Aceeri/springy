@@ -76,9 +76,9 @@ pub fn spring_impulse(
             .unwrap();
 
         spring_impulse.impulse += impulse;
-        spring_impulse.torque_impulse += angular_impulse;
+        //spring_impulse.torque_impulse += angular_impulse;
         particle_impulse.impulse -= impulse;
-        particle_impulse.torque_impulse -= angular_impulse;
+        //particle_impulse.torque_impulse -= angular_impulse;
     }
 }
 
