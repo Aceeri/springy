@@ -69,7 +69,7 @@ impl Default for Inertia {
     fn default() -> Self {
         Self {
             linear: 1.0,
-            angular: 0.01,
+            angular: 0.05,
         }
     }
 }

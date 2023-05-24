@@ -4,10 +4,10 @@ use bevy_rapier2d::prelude::*;
 #[cfg(feature = "rapier3d")]
 use bevy_rapier3d::prelude::*;
 
-use crate::Particle;
-
 use bevy::ecs::query::WorldQuery;
 use bevy::math::Vec3Swizzles;
+
+use crate::*;
 
 #[derive(WorldQuery)]
 pub struct RapierParticleQuery<'a> {
@@ -92,56 +92,54 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
         prop
     }
 
-    pub fn translation_particle(&self) -> Particle<Unit> {
+                #[cfg(feature = "rapier2d")]
+    pub fn translation(&self) -> TranslationParticle2 {
         let velocity = self.velocity();
         let mass = self.mass();
-
-        #[cfg(feature = "rapier2d")]
         let linvel = velocity.linvel;
-        /*
-               let linvel =
-                   velocity.linvel + Unit::ZERO - self.local_center_of_mass() + velocity.angvel.perp_dot();
-        */
-        #[cfg(feature = "rapier3d")]
+        TranslationParticle2 {
+            translation: self.global_transform.translation().xy(),
+            velocity: linvel,
+            mass: mass.mass,
+        }
+    }
+
+                #[cfg(feature = "rapier3d")]
+    pub fn translation(&self) -> TranslationParticle3 {
+        let velocity = self.velocity();
+        let mass = self.mass();
         let linvel = velocity.linvel
             + velocity
                 .angvel
                 .cross(Unit::ZERO - self.local_center_of_mass());
-        Particle {
-            #[cfg(feature = "rapier3d")]
+        TranslationParticle3 {
             position: self.global_transform.translation(),
-            #[cfg(feature = "rapier2d")]
-            position: self.global_transform.translation().xy(),
-
             velocity: linvel,
-            inertia: Unit::splat(mass.mass),
+            mass: Unit::splat(mass.mass),
         }
     }
 
     #[cfg(feature = "rapier2d")]
-    pub fn angular_particle(&self) -> Particle<Unit> {
+    pub fn angular(&self) -> AngularParticle2 {
         let velocity = self.velocity();
         let mass = self.mass();
         let up = self.global_transform.compute_transform().up();
-
-        let angvel = velocity.angvel;
-        Particle {
-            position: up.xy(),
-            velocity: Vec2::splat(angvel),
-            inertia: Vec2::splat(mass.principal_inertia),
+        let rotation = up.y.atan2(up.x);
+        AngularParticle2 {
+            rotation: rotation,
+            velocity: velocity.angvel,
+            inertia: mass.principal_inertia,
         }
     }
 
     #[cfg(feature = "rapier3d")]
-    pub fn angular_particle(&self) -> Particle<Unit> {
+    pub fn angular(&self) -> AngularParticle3 {
         let velocity = self.velocity();
         let mass = self.mass();
-        let up = self.global_transform.compute_transform().up();
-
-        let angvel = velocity.angvel;
-        Particle {
-            position: up,
-            velocity: angvel,
+        let global = self.global_transform.compute_transform();
+        AngularParticle3 {
+            rotation: global.rotation,
+            velocity: velocity.angvel,
             inertia: mass.principal_inertia,
         }
     }

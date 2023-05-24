@@ -35,9 +35,9 @@ pub struct Spring {
     pub containing: Entity,
 }
 
-#[derive(Default, Debug, Clone, Component, Reflect)]
+#[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
-pub struct SpringSettings(springy::SpringState<Vec2>);
+pub struct SpringSettings(springy::Spring);
 
 pub fn spring_impulse(
     time: Res<Time>,
@@ -60,37 +60,25 @@ pub fn spring_impulse(
             continue;
         }
 
-        match spring_settings.0.impulse(
-            timestep,
-            particle_a.translation_particle(),
-            particle_b.translation_particle(),
-        ) {
-            springy::SpringResult::Impulse(impulse) => {
-                let [mut spring_impulse, mut particle_impulse] = impulses
-                    .get_many_mut([spring_entity, particle_entity])
-                    .unwrap();
+        let translate_particle_a = particle_a.translation();
+        let angular_particle_a = particle_a.angular();
+        let translate_particle_b = particle_b.translation();
+        let angular_particle_b = particle_b.angular();
 
-                spring_impulse.impulse = -impulse;
-                particle_impulse.impulse = impulse;
-            }
-            _ => {}
-        }
+        let instant = translate_particle_a.instant(&translate_particle_b);
+        let impulse = spring_settings.0.impulse(timestep, instant);
 
-        match spring_settings.0.impulse(
-            timestep,
-            particle_a.angular_particle(),
-            particle_b.angular_particle(),
-        ) {
-            springy::SpringResult::Impulse(impulse) => {
-                let [mut spring_impulse, mut particle_impulse] = impulses
-                    .get_many_mut([spring_entity, particle_entity])
-                    .unwrap();
+        let angular_instant = angular_particle_a.instant(&angular_particle_b);
+        let angular_impulse = spring_settings.0.impulse(timestep, angular_instant);
 
-                //spring_impulse.torque_impulse = -impulse.x;
-                //particle_impulse.torque_impulse = impulse.x;
-            }
-            _ => {}
-        }
+        let [mut spring_impulse, mut particle_impulse] = impulses
+            .get_many_mut([spring_entity, particle_entity])
+            .unwrap();
+
+        spring_impulse.impulse += impulse;
+        spring_impulse.torque_impulse += angular_impulse;
+        particle_impulse.impulse -= impulse;
+        particle_impulse.torque_impulse -= angular_impulse;
     }
 }
 
@@ -154,12 +142,10 @@ pub fn setup_physics(mut commands: Commands) {
         })
         .insert(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
         .insert(Spring { containing: cube_1 })
-        .insert(SpringSettings(springy::SpringState::new(springy::Spring {
-            rest_distance: 5.0,
-            limp_distance: 5.0,
+        .insert(SpringSettings(springy::Spring {
             strength: 1.0,
             damp_ratio: 1.0,
-        })))
+        }))
         .insert((
             //RigidBody::Dynamic,
             Velocity::default(),

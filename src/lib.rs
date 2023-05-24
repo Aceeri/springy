@@ -56,6 +56,26 @@ pub struct AngularParticle2 {
     pub velocity: f32,
 }
 
+#[derive(Default, Debug)]
+pub struct TranslationParticle3 {
+    /// Resistance the particle has to changes in motion.
+    pub mass: f32,
+    /// Current translation of the particle.
+    pub translation: Vec3,
+    /// Current velocity of the particle.
+    pub velocity: Vec3,
+}
+
+#[derive(Default, Debug)]
+pub struct AngularParticle3 {
+    /// Resistance the particle has to changes in angular motion.
+    pub inertia: Vec3,
+    /// Current rotation of the particle.
+    pub rotation: Quat,
+    /// Current angular velocity of the particle.
+    pub velocity: Vec3,
+}
+
 pub struct SpringInstant<K: Kinematic> {
     pub reduced_inertia: K,
     /// Displacement of the spring, which is the relative positions between particles.
@@ -91,6 +111,38 @@ impl AngularParticle2 {
         }
     }
 }
+
+
+impl TranslationParticle3 {
+    pub fn reduced_mass(&self, other: &Self) -> f32 {
+        (self.mass.inverse() + other.mass.inverse()).inverse()
+    }
+
+    pub fn instant(&self, other: &Self) -> SpringInstant<Vec3> {
+        SpringInstant {
+            reduced_inertia: Vec3::splat(self.reduced_mass(other)),
+            displacement: self.translation - other.translation,
+            velocity: self.velocity - other.velocity,
+        }
+    }
+}
+
+impl AngularParticle3 {
+    pub fn reduced_inertia(&self, other: &Self) -> Vec3 {
+        (self.inertia.inverse() + other.inertia.inverse()).inverse()
+    }
+
+    pub fn instant(&self, other: &Self) -> SpringInstant<Vec3> {
+        let self_dir = self.rotation * Vec3::Z;
+        let other_dir = other.rotation * Vec3::Z;
+        SpringInstant {
+            reduced_inertia: self.reduced_inertia(other),
+            displacement: self_dir.cross(other_dir),
+            velocity: self.velocity - other.velocity,
+        }
+    }
+}
+
 
 impl Spring {
     pub fn strength(&self) -> f32 {
