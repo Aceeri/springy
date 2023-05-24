@@ -39,7 +39,7 @@ pub struct Spring {
     pub containing: Entity,
 }
 
-#[derive(Default, Debug, Copy, Clone, Component, Reflect)]
+#[derive(Default, Debug, Clone, Component, Reflect)]
 #[reflect(Component)]
 pub struct SpringSettings(springy::SpringState<Vec2>);
 
