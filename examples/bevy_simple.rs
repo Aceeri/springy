@@ -15,16 +15,14 @@ fn main() {
         .add_startup_system(setup_rope)
         .add_startup_system(setup_translation)
         .add_startup_system(setup_rotational)
-        .add_systems(
-            (
-                symplectic_euler,
-                spring_impulse.before(symplectic_euler),
-                gravity.before(symplectic_euler),
-            ),
-        )
+        .add_systems((
+            symplectic_euler,
+            spring_impulse.before(symplectic_euler),
+            gravity.before(symplectic_euler),
+        ))
         .register_type::<Impulse>()
         .register_type::<Gravity>()
-        .register_type::<Mass>()
+        .register_type::<Inertia>()
         .register_type::<Velocity>()
         .register_type::<SpringSettings>()
         .run();
@@ -48,26 +46,51 @@ pub struct SpringSettings(springy::Spring);
 
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
-pub struct Velocity(Vec2);
+pub struct Velocity {
+    pub linear: Vec2,
+    pub angular: f32,
+}
 
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
-pub struct Impulse(Vec2);
+pub struct Impulse {
+    pub linear: Vec2,
+    pub angular: f32,
+}
 
 #[derive(Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
-pub struct Mass(pub f32);
+pub struct Inertia {
+    pub linear: f32,
+    pub angular: f32,
+}
 
-impl Default for Mass {
+impl Default for Inertia {
     fn default() -> Self {
-        Self(1.0)
+        Self {
+            linear: 1.0,
+            angular: 1.0,
+        }
     }
 }
 
-impl Mass {
-    pub fn inverse_mass(&self) -> f32 {
-        if self.0 != 0.0 {
-            1.0 / self.0
+impl Inertia {
+    pub const INFINITY: Self = Inertia {
+        linear: f32::INFINITY,
+        angular: f32::INFINITY,
+    };
+
+    pub fn inverse_linear(&self) -> f32 {
+        if self.linear.is_normal() {
+            1.0 / self.linear
+        } else {
+            0.0
+        }
+    }
+
+    pub fn inverse_angular(&self) -> f32 {
+        if self.angular.is_normal() {
+            1.0 / self.angular
         } else {
             0.0
         }
@@ -87,16 +110,21 @@ impl Default for Gravity {
 /// Basic symplectic euler integration of the impulse/velocity/position.
 pub fn symplectic_euler(
     time: Res<Time>,
-    mut to_integrate: Query<(&mut Transform, &mut Velocity, &mut Impulse, &Mass)>,
+    mut to_integrate: Query<(&mut Transform, &mut Velocity, &mut Impulse, &Inertia)>,
 ) {
     if time.delta_seconds() == 0.0 {
         return;
     }
 
-    for (mut position, mut velocity, mut impulse, mass) in &mut to_integrate {
-        velocity.0 += impulse.0 * mass.inverse_mass();
-        position.translation += velocity.0.extend(0.0) * TICK_RATE as f32;
-        impulse.0 = Vec2::ZERO;
+    for (mut position, mut velocity, mut impulse, inertia) in &mut to_integrate {
+        velocity.linear += impulse.linear * inertia.inverse_linear();
+        velocity.angular += impulse.angular * inertia.inverse_angular();
+
+        position.translation += velocity.linear.extend(0.0) * TICK_RATE as f32;
+        //position.rotation += velocity.angular.extend(0.0) * TICK_RATE as f32;
+
+        impulse.linear = Vec2::ZERO;
+        impulse.angular = 0.0;
     }
 }
 
@@ -106,7 +134,7 @@ pub fn gravity(time: Res<Time>, mut to_apply: Query<(&mut Impulse, &Gravity)>) {
     }
 
     for (mut impulse, gravity) in &mut to_apply {
-        impulse.0 += gravity.0;
+        impulse.linear += gravity.0;
     }
 }
 
@@ -121,12 +149,12 @@ pub fn spring_impulse(
         Entity,
         &GlobalTransform,
         &Velocity,
-        &Mass,
+        &Inertia,
         &SpringSettings,
         &Spring,
         &mut PreviousUnitVector,
     )>,
-    particle: Query<(&GlobalTransform, &Velocity, &Mass)>,
+    particle: Query<(&GlobalTransform, &Velocity, &Inertia)>,
 ) {
     if time.delta_seconds() == 0.0 {
         return;
@@ -151,30 +179,26 @@ pub fn spring_impulse(
         if particle_entity == spring_entity {
             continue;
         }
-        let particle_a = 
-            springy::TranslationParticle2 {
-                mass: spring_mass.0,
-                translation: spring_transform.translation().xy(),
-                velocity: spring_velocity.0,
-            };
+        let particle_a = springy::TranslationParticle2 {
+            mass: spring_mass.linear,
+            translation: spring_transform.translation().xy(),
+            velocity: spring_velocity.linear,
+        };
         let particle_b = springy::TranslationParticle2 {
-                mass: particle_mass.0,
-                translation: particle_transform.translation().xy(),
-                velocity: particle_velocity.0,
-            };
+            mass: particle_mass.linear,
+            translation: particle_transform.translation().xy(),
+            velocity: particle_velocity.linear,
+        };
 
         let instant = particle_a.instant(&particle_b);
-        let impulse = spring_settings.0.impulse(
-            timestep,
-            instant,
-        );
+        let impulse = spring_settings.0.impulse(timestep, instant);
 
         let [mut spring_impulse, mut particle_impulse] = impulses
             .get_many_mut([spring_entity, particle_entity])
             .unwrap();
 
-        spring_impulse.0 += impulse;
-        particle_impulse.0 -= impulse;
+        spring_impulse.linear += impulse;
+        particle_impulse.linear -= impulse;
     }
 }
 
@@ -206,7 +230,7 @@ pub fn setup_rope(mut commands: Commands) {
         .insert((
             Velocity::default(),
             Impulse::default(),
-            Mass::default(),
+            Inertia::default(),
             Gravity::default(),
             PreviousUnitVector::default(),
         ))
@@ -221,7 +245,7 @@ pub fn setup_rope(mut commands: Commands) {
         .insert((
             Velocity::default(),
             Impulse::default(),
-            Mass::default(),
+            Inertia::default(),
             Gravity::default(),
             PreviousUnitVector::default(),
         ))
@@ -242,7 +266,7 @@ pub fn setup_rope(mut commands: Commands) {
         .insert((
             Velocity::default(),
             Impulse::default(),
-            Mass::default(),
+            Inertia::default(),
             Gravity::default(),
             PreviousUnitVector::default(),
         ))
@@ -268,12 +292,11 @@ pub fn setup_rope(mut commands: Commands) {
         .insert((
             Velocity::default(),
             Impulse::default(),
-            Mass(f32::INFINITY),
+            Inertia::INFINITY,
             PreviousUnitVector::default(),
         ))
         .insert(Name::new("Cube Slot"));
-    }
-
+}
 
 pub fn setup_translation(mut commands: Commands) {
     let size = 20.0;
@@ -320,7 +343,7 @@ pub fn setup_translation(mut commands: Commands) {
             .insert((
                 Velocity::default(),
                 Impulse::default(),
-                Mass::default(),
+                Inertia::default(),
                 PreviousUnitVector::default(),
             ))
             .insert(Name::new("Critical"))
@@ -344,7 +367,7 @@ pub fn setup_translation(mut commands: Commands) {
             .insert((
                 Velocity::default(),
                 Impulse::default(),
-                Mass(f32::INFINITY),
+                Inertia::INFINITY,
                 PreviousUnitVector::default(),
             ))
             .insert(Name::new("Critical Slot"));
@@ -396,7 +419,7 @@ pub fn setup_rotational(mut commands: Commands) {
             .insert((
                 Velocity::default(),
                 Impulse::default(),
-                Mass::default(),
+                Inertia::default(),
                 PreviousUnitVector::default(),
             ))
             .insert(Name::new("Critical"))
@@ -408,7 +431,7 @@ pub fn setup_rotational(mut commands: Commands) {
                 ..default()
             })
             .insert(TransformBundle::from(Transform::from_xyz(
-                -300.0, height, 0.0,
+                -100.0, height, 0.0,
             )))
             .insert(Spring {
                 containing: damped_cube,
@@ -420,11 +443,9 @@ pub fn setup_rotational(mut commands: Commands) {
             .insert((
                 Velocity::default(),
                 Impulse::default(),
-                Mass(f32::INFINITY),
+                Inertia::INFINITY,
                 PreviousUnitVector::default(),
             ))
             .insert(Name::new("Critical Slot"));
     }
 }
-
-
