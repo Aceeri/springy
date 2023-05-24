@@ -24,12 +24,6 @@ pub type Unit = Vec2;
 #[cfg(feature = "rapier3d")]
 pub type Unit = Vec3;
 
-impl<'w, 's> Into<Particle<Unit>> for RapierParticleQueryItem<'w, 's> {
-    fn into(self) -> Particle<Unit> {
-        self.impulse_particle()
-    }
-}
-
 impl<'w, 's> RapierParticleQueryItem<'w, 's> {
     pub fn name<'a>(&'a self) -> Box<dyn std::fmt::Debug + 'a> {
         match self.name {
@@ -58,60 +52,50 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
         }
     }
 
-    pub fn mass(&self) -> f32 {
-        match self.rigid_body {
-            Some(rigid_body @ RigidBody::Dynamic) => match self.mass {
-                Some(mass) => mass.0.mass,
-                _ => {
-                    warn!(
-                        "{:?} rigidbody for {:?} needs a `readmassproperties` component for spring damping",
-                        rigid_body,
-                        self.name()
-                    );
-                    1.0
+    pub fn mass(&self) -> MassProperties {
+        let mut prop = match self.mass {
+            Some(mass) => mass.0,
+            None => {
+                match self.rigid_body {
+                    Some(RigidBody::KinematicVelocityBased | RigidBody::Dynamic) => {
+                        warn!(
+                            "{:?} rigidbody for {:?} needs a `ReadMassProperties` component for spring damping",
+                            self.rigid_body,
+                            self.name()
+                        );
+                    }
+                    _ => {}
                 }
-            },
-            Some(_) => f32::INFINITY,
-            _ => 1.0,
-        }
-    }
+                MassProperties::default()
+            }
+        };
 
-    pub fn local_center_of_mass(&self) -> Unit {
         match self.rigid_body {
             Some(
-                rigid_body @ RigidBody::Dynamic | rigid_body @ RigidBody::KinematicVelocityBased,
-            ) => match self.mass {
-                Some(mass) => mass.0.local_center_of_mass,
-                _ => {
-                    warn!(
-                        "{:?} rigidbody for {:?} needs a `readmassproperties` component for spring damping",
-                        rigid_body,
-                        self.name()
-                    );
-                    Unit::ZERO
+                RigidBody::KinematicVelocityBased
+                | RigidBody::KinematicPositionBased
+                | RigidBody::Fixed,
+            ) => {
+                prop.mass = f32::INFINITY;
+                #[cfg(feature = "rapier2d")]
+                {
+                    prop.principal_inertia = f32::INFINITY;
                 }
-            },
-            Some(_) => Unit::ZERO,
-            _ => Unit::ZERO,
+                #[cfg(feature = "rapier3d")]
+                {
+                    prop.principal_inertia = Unit::splat(f32::INFINITY);
+                }
+            }
+            _ => {}
         }
+
+        prop
     }
-    /*
 
-    pub fn angular_particle(&self) -> Particle<Unit> {
+    pub fn translation_particle(&self) -> Particle<Unit> {
         let velocity = self.velocity();
-        Particle {
-            #[cfg(feature = "rapier3d")]
-            position: self.global_transform.rotation(),
-            #[cfg(feature = "rapier2d")]
-            position: self.global_transform.rotation().xy(),
+        let mass = self.mass();
 
-            velocity: linvel,
-            mass: self.mass(),
-        }
-    } */
-
-    pub fn impulse_particle(&self) -> Particle<Unit> {
-        let velocity = self.velocity();
         #[cfg(feature = "rapier2d")]
         let linvel = velocity.linvel;
         /*
@@ -130,7 +114,35 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
             position: self.global_transform.translation().xy(),
 
             velocity: linvel,
-            inertia: Unit::splat(self.mass()),
+            inertia: Unit::splat(mass.mass),
+        }
+    }
+
+    #[cfg(feature = "rapier2d")]
+    pub fn angular_particle(&self) -> Particle<Unit> {
+        let velocity = self.velocity();
+        let mass = self.mass();
+        let up = self.global_transform.compute_transform().up();
+
+        let angvel = velocity.angvel;
+        Particle {
+            position: up.xy(),
+            velocity: Vec2::splat(angvel),
+            inertia: Vec2::splat(mass.principal_inertia),
+        }
+    }
+
+    #[cfg(feature = "rapier3d")]
+    pub fn angular_particle(&self) -> Particle<Unit> {
+        let velocity = self.velocity();
+        let mass = self.mass();
+        let up = self.global_transform.compute_transform().up();
+
+        let angvel = velocity.angvel;
+        Particle {
+            position: up,
+            velocity: angvel,
+            inertia: mass.principal_inertia,
         }
     }
 }

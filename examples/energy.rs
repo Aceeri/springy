@@ -1,5 +1,4 @@
 use bevy::math::Vec3Swizzles;
-use bevy::time::FixedTimestep;
 use bevy::{prelude::*, window::PresentMode};
 
 const TICK_RATE: f64 = 1.0 / 60.0;
@@ -9,10 +8,6 @@ const MIN_DAMP_RATIO: f32 = 0.00055;
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::DARK_GRAY))
-        .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::AutoVsync,
-            ..default()
-        })
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_editor_pls::EditorPlugin)

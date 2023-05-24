@@ -60,7 +60,11 @@ pub fn spring_impulse(
             continue;
         }
 
-        match spring_settings.0.impulse(timestep, particle_a, particle_b) {
+        match spring_settings.0.impulse(
+            timestep,
+            particle_a.translation_particle(),
+            particle_b.translation_particle(),
+        ) {
             springy::SpringResult::Impulse(impulse) => {
                 let [mut spring_impulse, mut particle_impulse] = impulses
                     .get_many_mut([spring_entity, particle_entity])
@@ -68,6 +72,22 @@ pub fn spring_impulse(
 
                 spring_impulse.impulse = -impulse;
                 particle_impulse.impulse = impulse;
+            }
+            _ => {}
+        }
+
+        match spring_settings.0.impulse(
+            timestep,
+            particle_a.angular_particle(),
+            particle_b.angular_particle(),
+        ) {
+            springy::SpringResult::Impulse(impulse) => {
+                let [mut spring_impulse, mut particle_impulse] = impulses
+                    .get_many_mut([spring_entity, particle_entity])
+                    .unwrap();
+
+                //spring_impulse.torque_impulse = -impulse.x;
+                //particle_impulse.torque_impulse = impulse.x;
             }
             _ => {}
         }
