@@ -111,11 +111,11 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
         let linvel = velocity.linvel
             + velocity
                 .angvel
-                .cross(Unit::ZERO - self.local_center_of_mass());
+                .cross(Unit::ZERO - mass.local_center_of_mass);
         TranslationParticle3 {
-            position: self.global_transform.translation(),
+            translation: self.global_transform.translation(),
             velocity: linvel,
-            mass: Unit::splat(mass.mass),
+            mass: mass.mass,
         }
     }
 
