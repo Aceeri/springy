@@ -28,11 +28,12 @@ fn main() {
         .run();
 }
 
-fn setup_graphics(mut commands: Commands,
+fn setup_graphics(
+    mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-     commands.spawn(PbrBundle {
+    commands.spawn(PbrBundle {
         mesh: meshes.add(shape::Plane::from_size(5.0).into()),
         material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
         ..default()
@@ -127,7 +128,12 @@ pub fn symplectic_euler(
         //let q0 = position.rotation;
         //let t = TICK_RATE;
         //let new_rot = q0 * velocity.angular * TICK_RATE as f32;
-        let ang = Quat::from_xyzw(0.0, velocity.angular.x, velocity.angular.y, velocity.angular.z);
+        let ang = Quat::from_xyzw(
+            0.0,
+            velocity.angular.x,
+            velocity.angular.y,
+            velocity.angular.z,
+        );
         position.rotation = ang * position.rotation;
 
         impulse.linear = Vec3::ZERO;
@@ -187,7 +193,8 @@ pub fn spring_impulse(
             continue;
         }
 
-        let (_, spring_rotation, spring_translation) = spring_transform.to_scale_rotation_translation();
+        let (_, spring_rotation, spring_translation) =
+            spring_transform.to_scale_rotation_translation();
         let particle_a = springy::TranslationParticle3 {
             mass: spring_mass.linear,
             translation: spring_translation,
@@ -200,7 +207,8 @@ pub fn spring_impulse(
             velocity: spring_velocity.angular,
         };
 
-        let (_, particle_rotation, particle_translation) = particle_transform.to_scale_rotation_translation();
+        let (_, particle_rotation, particle_translation) =
+            particle_transform.to_scale_rotation_translation();
         let particle_b = springy::TranslationParticle3 {
             mass: particle_mass.linear,
             translation: particle_translation,
@@ -228,16 +236,17 @@ pub fn spring_impulse(
     }
 }
 
-fn setup_rope(mut commands: Commands,
+fn setup_rope(
+    mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let cube_3 = commands
-            .spawn(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-                material: materials.add(Color::BLUE.into()),
-                ..default()
-            })
+        .spawn(PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
+            material: materials.add(Color::BLUE.into()),
+            ..default()
+        })
         .insert((
             Velocity::default(),
             Impulse::default(),
@@ -249,11 +258,11 @@ fn setup_rope(mut commands: Commands,
         .id();
 
     let cube_2 = commands
-            .spawn(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-                material: materials.add(Color::BLUE.into()),
-                ..default()
-            })
+        .spawn(PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
+            material: materials.add(Color::BLUE.into()),
+            ..default()
+        })
         .insert((
             Velocity::default(),
             Impulse::default(),
@@ -270,11 +279,11 @@ fn setup_rope(mut commands: Commands,
         .id();
 
     let cube_1 = commands
-            .spawn(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-                material: materials.add(Color::BLUE.into()),
-                ..default()
-            })
+        .spawn(PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
+            material: materials.add(Color::BLUE.into()),
+            ..default()
+        })
         .insert(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
         .insert((
             Velocity::default(),
@@ -292,11 +301,11 @@ fn setup_rope(mut commands: Commands,
         .id();
 
     let cube_slot = commands
-            .spawn(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-                material: materials.add(Color::RED.into()),
-                ..default()
-            })
+        .spawn(PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
+            material: materials.add(Color::RED.into()),
+            ..default()
+        })
         .insert(TransformBundle::from(Transform::from_xyz(-3.0, 5.0, -3.0)))
         .insert(Spring { containing: cube_1 })
         .insert(SpringSettings(springy::Spring {
@@ -312,7 +321,8 @@ fn setup_rope(mut commands: Commands,
         .insert(Name::new("Cube Slot"));
 }
 
-pub fn setup_translation(mut commands: Commands,
+pub fn setup_translation(
+    mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -346,9 +356,7 @@ pub fn setup_translation(mut commands: Commands,
                 material: materials.add(Color::RED.into()),
                 ..default()
             })
-            .insert(TransformBundle::from(Transform::from_xyz(
-                0.0, height, 0.0,
-            )))
+            .insert(TransformBundle::from(Transform::from_xyz(0.0, height, 0.0)))
             .insert(Spring {
                 containing: damped_cube,
             })
@@ -366,7 +374,8 @@ pub fn setup_translation(mut commands: Commands,
     }
 }
 
-pub fn setup_rotational(mut commands: Commands,
+pub fn setup_rotational(
+    mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {

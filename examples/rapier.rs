@@ -1,36 +1,32 @@
 use bevy::math::Vec3Swizzles;
-//use bevy::time::FixedTimestep;
 use bevy::{prelude::*, window::PresentMode};
+use bevy_rapier2d::prelude::*;
 
-const TICK_RATE: f64 = 1.0 / 20.0;
-const VISUAL_SLOWDOWN: f64 = 1.0;
+const TICK_RATE: f32 = 1.0 / 100.0;
 
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::DARK_GRAY))
+        .insert_resource(ClearColor(Color::rgb(
+            0xF9 as f32 / 255.0,
+            0xF9 as f32 / 255.0,
+            0xFF as f32 / 255.0,
+        )))
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_editor_pls::EditorPlugin::new())
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(10.0))
+        .add_plugin(RapierDebugRenderPlugin::default())
         .add_startup_system(setup_graphics)
-        .add_startup_system(setup_rope)
-        .add_startup_system(setup_translation)
-        .add_startup_system(setup_rotational)
-        .add_systems((
-            symplectic_euler,
-            spring_impulse.before(symplectic_euler),
-            gravity.before(symplectic_euler),
-        ))
-        .register_type::<Impulse>()
-        .register_type::<Gravity>()
-        .register_type::<Inertia>()
-        .register_type::<Velocity>()
+        //.add_startup_system(setup_translation)
+        .add_startup_system(setup_rotation)
+        .add_system(spring_impulse)
         .register_type::<SpringSettings>()
         .run();
 }
 
 fn setup_graphics(mut commands: Commands) {
     commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(0.0, 300.0, 0.0),
+        transform: Transform::from_xyz(-100.0, 100.0, 0.0),
         ..default()
     });
 }
@@ -44,104 +40,8 @@ pub struct Spring {
 #[reflect(Component)]
 pub struct SpringSettings(springy::Spring);
 
-#[derive(Default, Debug, Copy, Clone, Component, Reflect)]
-#[reflect(Component)]
-pub struct Velocity {
-    pub linear: Vec2,
-    pub angular: f32,
-}
 
-#[derive(Default, Debug, Copy, Clone, Component, Reflect)]
-#[reflect(Component)]
-pub struct Impulse {
-    pub linear: Vec2,
-    pub angular: f32,
-}
-
-#[derive(Debug, Copy, Clone, Component, Reflect)]
-#[reflect(Component)]
-pub struct Inertia {
-    pub linear: f32,
-    pub angular: f32,
-}
-
-impl Default for Inertia {
-    fn default() -> Self {
-        Self {
-            linear: 1.0,
-            angular: 0.05,
-        }
-    }
-}
-
-impl Inertia {
-    pub const INFINITY: Self = Inertia {
-        linear: f32::INFINITY,
-        angular: f32::INFINITY,
-    };
-
-    pub fn inverse_linear(&self) -> f32 {
-        if self.linear.is_normal() {
-            1.0 / self.linear
-        } else {
-            0.0
-        }
-    }
-
-    pub fn inverse_angular(&self) -> f32 {
-        if self.angular.is_normal() {
-            1.0 / self.angular
-        } else {
-            0.0
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, Component, Reflect)]
-#[reflect(Component)]
-pub struct Gravity(pub Vec2);
-
-impl Default for Gravity {
-    fn default() -> Self {
-        Self(Vec2::new(0.0, -9.817))
-    }
-}
-
-/// Basic symplectic euler integration of the impulse/velocity/position.
-pub fn symplectic_euler(
-    time: Res<Time>,
-    mut to_integrate: Query<(&mut Transform, &mut Velocity, &mut Impulse, &Inertia)>,
-) {
-    if time.delta_seconds() == 0.0 {
-        return;
-    }
-
-    for (mut position, mut velocity, mut impulse, inertia) in &mut to_integrate {
-        velocity.linear += impulse.linear * inertia.inverse_linear();
-        velocity.angular += impulse.angular * inertia.inverse_angular();
-
-        position.translation += velocity.linear.extend(0.0) * TICK_RATE as f32;
-        position.rotate_z(velocity.angular * TICK_RATE as f32);
-
-        impulse.linear = Vec2::ZERO;
-        impulse.angular = 0.0;
-    }
-}
-
-pub fn gravity(time: Res<Time>, mut to_apply: Query<(&mut Impulse, &Gravity)>) {
-    if time.delta_seconds() == 0.0 {
-        return;
-    }
-
-    for (mut impulse, gravity) in &mut to_apply {
-        impulse.linear += gravity.0;
-    }
-}
-
-#[derive(Default, Debug, Copy, Clone, Component, Reflect)]
-#[reflect(Component)]
-pub struct PreviousUnitVector(Option<Vec2>);
-
+/*
 pub fn spring_impulse(
     time: Res<Time>,
     mut impulses: Query<&mut Impulse>,
@@ -180,7 +80,8 @@ pub fn spring_impulse(
             continue;
         }
 
-        let (_, spring_rotation, spring_translation) = spring_transform.to_scale_rotation_translation();
+        let (_, spring_rotation, spring_translation) =
+            spring_transform.to_scale_rotation_translation();
         let particle_a = springy::TranslationParticle2 {
             mass: spring_mass.linear,
             translation: spring_translation.xy(),
@@ -194,7 +95,8 @@ pub fn spring_impulse(
             velocity: spring_velocity.angular,
         };
 
-        let (_, particle_rotation, particle_translation) = particle_transform.to_scale_rotation_translation();
+        let (_, particle_rotation, particle_translation) =
+            particle_transform.to_scale_rotation_translation();
         let particle_b = springy::TranslationParticle2 {
             mass: particle_mass.linear,
             translation: particle_translation.xy(),
@@ -224,8 +126,70 @@ pub fn spring_impulse(
         particle_impulse.angular -= angular_impulse;
     }
 }
+*/
 
-pub fn setup_rope(mut commands: Commands) {
+pub fn spring_impulse(
+    time: Res<Time>,
+    mut impulses: Query<&mut ExternalImpulse>,
+    mut springs: Query<(Entity, &mut SpringSettings, &Spring)>,
+    particle: Query<springy::RapierParticleQuery>,
+) {
+    if time.delta_seconds() == 0.0 {
+        return;
+    }
+
+    let timestep = TICK_RATE;
+
+    for (spring_entity, mut spring_settings, spring) in &mut springs {
+        let particle_entity = spring.containing;
+        let particle_a = particle.get(spring_entity).unwrap();
+        let particle_b = particle.get(particle_entity).unwrap();
+
+        if particle_entity == spring_entity {
+            continue;
+        }
+
+        let translate_particle_a = particle_a.translation();
+        let angular_particle_a = particle_a.angular();
+        let translate_particle_b = particle_b.translation();
+        let angular_particle_b = particle_b.angular();
+
+        let instant = translate_particle_a.instant(&translate_particle_b);
+        let impulse = spring_settings.0.impulse(timestep, instant);
+
+        let angular_instant = angular_particle_a.instant(&angular_particle_b);
+        let angular_impulse = spring_settings.0.impulse(timestep, angular_instant);
+        //let angular_impulse = angular_impulse * 0.001;
+        let [mut spring_impulse, mut particle_impulse] = impulses
+            .get_many_mut([spring_entity, particle_entity])
+            .unwrap();
+
+        spring_impulse.impulse += impulse;
+        spring_impulse.torque_impulse += angular_impulse;
+        particle_impulse.impulse -= impulse;
+        particle_impulse.torque_impulse -= angular_impulse;
+    }
+}
+
+/*
+pub fn setup_physics(mut commands: Commands) {
+    /*
+     * Ground
+     */
+    let ground_size = 5000.0;
+    let ground_height = 10.0;
+
+    commands
+        .spawn(TransformBundle::from(Transform::from_xyz(
+            0.0,
+            -ground_height - 100.0,
+            0.0,
+        )))
+        .insert(Collider::cuboid(ground_size, ground_height));
+
+    /*
+     * Create the cubes
+     */
     let size = 20.0;
     let sprite = Sprite {
         color: Color::BLUE,
@@ -245,81 +209,55 @@ pub fn setup_rope(mut commands: Commands) {
         anchor: Default::default(),
     };
 
-    let cube_3 = commands
+    let slotted_cube = commands
         .spawn(SpriteBundle {
-            sprite: sprite.clone(),
-            ..default()
-        })
-        .insert((
-            Velocity::default(),
-            Impulse::default(),
-            Inertia::default(),
-            Gravity::default(),
-            PreviousUnitVector::default(),
-        ))
-        .insert(Name::new("Cube 3"))
-        .id();
-
-    let cube_2 = commands
-        .spawn(SpriteBundle {
-            sprite: sprite.clone(),
-            ..default()
-        })
-        .insert((
-            Velocity::default(),
-            Impulse::default(),
-            Inertia::default(),
-            Gravity::default(),
-            PreviousUnitVector::default(),
-        ))
-        .insert(Name::new("Cube 2"))
-        .insert(Spring { containing: cube_3 })
-        .insert(SpringSettings(springy::Spring {
-            strength: 0.05,
-            damp_ratio: 1.0,
-        }))
-        .id();
-
-    let cube_1 = commands
-        .spawn(SpriteBundle {
-            sprite: sprite.clone(),
+            sprite: sprite,
             ..default()
         })
         .insert(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
         .insert((
+            RigidBody::Dynamic,
             Velocity::default(),
-            Impulse::default(),
-            Inertia::default(),
-            Gravity::default(),
-            PreviousUnitVector::default(),
+            ExternalImpulse::default(),
+            ReadMassProperties::default(),
+            Collider::cuboid(size / 2.0, size / 2.0),
         ))
-        .insert(Spring { containing: cube_2 })
-        .insert(SpringSettings(springy::Spring {
-            strength: 0.05,
-            damp_ratio: 1.0,
-        }))
-        .insert(Name::new("Cube 1"))
+        .insert(Name::new("Slotted Cube"))
         .id();
 
     let cube_slot = commands
         .spawn(SpriteBundle {
-            sprite: slot.clone(),
+            sprite: slot,
             ..default()
         })
-        .insert(TransformBundle::from(Transform::from_xyz(0.0, 300.0, 0.0)))
+        .insert(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
         .insert(Spring { containing: cube_1 })
         .insert(SpringSettings(springy::Spring {
-            strength: 0.05,
+            strength: 1.0,
             damp_ratio: 1.0,
         }))
         .insert((
+            //RigidBody::Dynamic,
             Velocity::default(),
-            Impulse::default(),
-            Inertia::INFINITY,
-            PreviousUnitVector::default(),
+            ExternalImpulse::default(),
+            ReadMassProperties::default(),
+            //Collider::cuboid(size, size),
         ))
         .insert(Name::new("Cube Slot"));
+
+    commands
+        .spawn(TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)))
+        .insert((
+            RigidBody::Dynamic,
+            Velocity::default(),
+            ExternalImpulse::default(),
+            ReadMassProperties::default(),
+            Collider::cuboid(size / 2.0, size / 2.0),
+        ))
+        .insert(Name::new("Random cube"));
 }
+ */
+
 
 pub fn setup_translation(mut commands: Commands) {
     let size = 20.0;
@@ -341,20 +279,22 @@ pub fn setup_translation(mut commands: Commands) {
         anchor: Default::default(),
     };
 
-    let iterations = 500;
+    let iterations = 100;
     let height = 500.0;
-    for damped in 0..iterations {
-        let size = height / iterations as f32;
+    let size = height / iterations as f32;
+    let margin = size * 0.5;
+
+    for iteration in 0..iterations {
         let damped_sprite = Sprite {
             color: Color::YELLOW,
             flip_x: false,
             flip_y: false,
-            custom_size: Some(Vec2::new(5.0, size)),
+            custom_size: Some(Vec2::new(size, size)),
             rect: None,
             anchor: Default::default(),
         };
 
-        let height = damped as f32 * size;
+        let height = iteration as f32 * (size + margin);
         let damped_cube = commands
             .spawn(SpriteBundle {
                 sprite: damped_sprite.clone(),
@@ -364,14 +304,16 @@ pub fn setup_translation(mut commands: Commands) {
                 300.0, height, 0.0,
             )))
             .insert((
+                RigidBody::Dynamic,
                 Velocity::default(),
-                Impulse::default(),
-                Inertia::default(),
-                PreviousUnitVector::default(),
+                ExternalImpulse::default(),
+                ReadMassProperties::default(),
+                Collider::cuboid(size / 2.0, size / 2.0),
             ))
-            .insert(Name::new(format!("Translational {}", height)))
+            .insert(Name::new(format!("Translational {}", iteration)))
             .id();
 
+        let damp_ratio = iteration as f32 / iterations as f32;
         let critical_slot = commands
             .spawn(SpriteBundle {
                 sprite: slot.clone(),
@@ -385,19 +327,20 @@ pub fn setup_translation(mut commands: Commands) {
             })
             .insert(SpringSettings(springy::Spring {
                 strength: 0.05,
-                damp_ratio: damped as f32 / iterations as f32,
+                damp_ratio: damp_ratio,
             }))
             .insert((
+                //RigidBody::Dynamic,
                 Velocity::default(),
-                Impulse::default(),
-                Inertia::INFINITY,
-                PreviousUnitVector::default(),
+                ExternalImpulse::default(),
+                ReadMassProperties::default(),
+                //Collider::cuboid(size, size),
             ))
-            .insert(Name::new("Trans Critical Slot"));
+            .insert(Name::new(format!("Slot {} (ratio {})", iteration, damp_ratio)));
     }
 }
 
-pub fn setup_rotational(mut commands: Commands) {
+pub fn setup_rotation(mut commands: Commands) {
     let size = 20.0;
     let sprite = Sprite {
         color: Color::BLUE,
@@ -417,61 +360,65 @@ pub fn setup_rotational(mut commands: Commands) {
         anchor: Default::default(),
     };
 
-    let iterations = 50;
+    let iterations = 100;
     let height = 500.0;
-    for damped in 0..iterations {
-        let size = height / iterations as f32;
+    let size = height / iterations as f32;
+    let margin = size * 1.0;
+
+    for iteration in 0..iterations {
         let damped_sprite = Sprite {
             color: Color::YELLOW,
             flip_x: false,
             flip_y: false,
-            custom_size: Some(Vec2::new(5.0, size)),
+            custom_size: Some(Vec2::new(size, size)),
             rect: None,
             anchor: Default::default(),
         };
 
-        let height = damped as f32 * size;
+        let height = iteration as f32 * (size + margin);
         let damped_cube = commands
             .spawn(SpriteBundle {
                 sprite: damped_sprite.clone(),
                 ..default()
             })
-            .insert(TransformBundle::from(Transform::from_xyz(
-                -300.0, height, 0.0,
-            )))
+            .insert(TransformBundle::from(Transform {
+                translation: Vec3::new(-200.0, height, 0.0),
+                rotation: Quat::from_rotation_z(1.0),
+                scale: Vec3::splat(1.0),
+            }))
             .insert((
-                Velocity {
-                    angular: 0.1,
-                    ..default()
-                },
-                Impulse::default(),
-                Inertia::default(),
-                PreviousUnitVector::default(),
+                RigidBody::Dynamic,
+                Velocity::default(),
+                ExternalImpulse::default(),
+                ReadMassProperties::default(),
+                Collider::cuboid(size / 2.0, size / 2.0),
             ))
-            .insert(Name::new(format!("Rotational {}", height)))
+            .insert(Name::new(format!("Rotation {}", iteration)))
             .id();
 
+        let damp_ratio = iteration as f32 / iterations as f32;
         let critical_slot = commands
             .spawn(SpriteBundle {
                 sprite: slot.clone(),
                 ..default()
             })
             .insert(TransformBundle::from(Transform::from_xyz(
-                -100.0, height, 0.0,
+                -200.0, height, 0.0,
             )))
             .insert(Spring {
                 containing: damped_cube,
             })
             .insert(SpringSettings(springy::Spring {
-                strength: 0.05,
-                damp_ratio: damped as f32 / iterations as f32,
+                strength: 0.7,
+                damp_ratio: damp_ratio,
             }))
             .insert((
+                //RigidBody::Dynamic,
                 Velocity::default(),
-                Impulse::default(),
-                Inertia::INFINITY,
-                PreviousUnitVector::default(),
+                ExternalImpulse::default(),
+                ReadMassProperties::default(),
+                //Collider::cuboid(size, size),
             ))
-            .insert(Name::new(format!("Rotational {} Slot", height)));
+            .insert(Name::new(format!("Rot Slot {} (ratio {})", iteration, damp_ratio)));
     }
 }

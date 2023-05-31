@@ -92,7 +92,7 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
         prop
     }
 
-                #[cfg(feature = "rapier2d")]
+    #[cfg(feature = "rapier2d")]
     pub fn translation(&self) -> TranslationParticle2 {
         let velocity = self.velocity();
         let mass = self.mass();
@@ -104,7 +104,7 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
         }
     }
 
-                #[cfg(feature = "rapier3d")]
+    #[cfg(feature = "rapier3d")]
     pub fn translation(&self) -> TranslationParticle3 {
         let velocity = self.velocity();
         let mass = self.mass();
@@ -123,10 +123,11 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
     pub fn angular(&self) -> AngularParticle2 {
         let velocity = self.velocity();
         let mass = self.mass();
-        let up = self.global_transform.compute_transform().up();
-        let rotation = up.y.atan2(up.x);
+        let rotation = self.global_transform.compute_transform().rotation;
+        let vector = rotation * Vec3::X;
+        let angle = vector.y.atan2(vector.x);
         AngularParticle2 {
-            rotation: rotation,
+            rotation: angle,
             velocity: velocity.angvel,
             inertia: mass.principal_inertia,
         }

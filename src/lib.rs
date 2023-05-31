@@ -112,7 +112,6 @@ impl AngularParticle2 {
     }
 }
 
-
 impl TranslationParticle3 {
     pub fn reduced_mass(&self, other: &Self) -> f32 {
         (self.mass.inverse() + other.mass.inverse()).inverse()
@@ -143,7 +142,6 @@ impl AngularParticle3 {
     }
 }
 
-
 impl Spring {
     pub fn strength(&self) -> f32 {
         self.strength.clamp(0.0, 1.0)
@@ -154,7 +152,7 @@ impl Spring {
     }
 
     pub fn damping(&self) -> f32 {
-        (self.damp_ratio() * 2.0 * self.strength().sqrt()).clamp(0.0, 1.0)
+        (self.damp_ratio() * 2.0 * self.strength().sqrt())//.clamp(0.0, 1.0)
     }
 
     pub fn impulse<K: Kinematic>(&self, timestep: f32, instant: SpringInstant<K>) -> K {
@@ -168,7 +166,7 @@ impl Spring {
             distance_error * instant.reduced_inertia * self.strength() * inverse_timestep;
         let velocity_impulse = velocity_error * instant.reduced_inertia * self.damping();
 
-        let impulse = -(distance_impulse + velocity_impulse);
+        let impulse = -(distance_impulse + velocity_impulse) * timestep;
         impulse
     }
 }
