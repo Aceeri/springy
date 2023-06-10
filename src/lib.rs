@@ -157,11 +157,10 @@ impl AngularParticle3 {
     }
 
     pub fn instant(&self, other: &Self) -> SpringInstant<Vec3> {
-        let self_dir = self.rotation * Vec3::Z;
-        let other_dir = other.rotation * Vec3::Z;
+        let difference = self.rotation.inverse() * other.rotation;
         SpringInstant {
             reduced_inertia: self.reduced_inertia(other),
-            displacement: self_dir.cross(other_dir),
+            displacement: difference.to_scaled_axis(),
             velocity: self.velocity - other.velocity,
         }
     }
@@ -177,7 +176,7 @@ impl Spring {
     }
 
     pub fn damping(&self) -> f32 {
-        (self.damp_ratio() * 2.0 * self.strength().sqrt())//.clamp(0.0, 1.0)
+        (self.damp_ratio() * 2.0 * self.strength().sqrt()).clamp(0.0, 1.0)
     }
 
     pub fn impulse<K: Kinematic>(&self, timestep: f32, instant: SpringInstant<K>) -> K {
