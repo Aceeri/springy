@@ -36,6 +36,31 @@ pub struct Spring {
     pub damp_ratio: f32,
 }
 
+/// One dimensional spring particle
+#[derive(Default, Debug)]
+pub struct Particle1 {
+    /// Resistance the particle has to changes in motion.
+    pub inertia: f32,
+    /// Current translation of the particle.
+    pub position: f32,
+    /// Current velocity of the particle.
+    pub velocity: f32,
+}
+
+impl Particle1 {
+    pub fn reduced_inertia(&self, other: &Self) -> f32 {
+        (self.inertia.inverse() + other.inertia.inverse()).inverse()
+    }
+
+    pub fn instant(&self, other: &Self) -> SpringInstant<f32> {
+        SpringInstant {
+            reduced_inertia: self.reduced_inertia(other),
+            displacement: self.position - other.position,
+            velocity: self.velocity - other.velocity,
+        }
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct TranslationParticle2 {
     /// Resistance the particle has to changes in motion.
@@ -166,7 +191,7 @@ impl Spring {
             distance_error * instant.reduced_inertia * self.strength() * inverse_timestep;
         let velocity_impulse = velocity_error * instant.reduced_inertia * self.damping();
 
-        let impulse = -(distance_impulse + velocity_impulse) * timestep;
+        let impulse = -(distance_impulse + velocity_impulse);
         impulse
     }
 }

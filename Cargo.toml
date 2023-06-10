@@ -36,16 +36,16 @@ opt-level = 3
 
 [[example]]
 name = "rapier"
-path = "examples/rapier.rs"
+path = "examples/rapier_2d.rs"
 required-features = ["rapier2d"]
 
 [[example]]
 name = "simple"
-path = "examples/bevy_simple_2d.rs"
+path = "examples/simple_2d.rs"
 
 [[example]]
 name = "simple_3d"
-path = "examples/bevy_simple_3d.rs"
+path = "examples/simple_3d.rs"
 
 [[example]]
 name = "energy"

@@ -134,7 +134,31 @@ pub fn symplectic_euler(
             velocity.angular.y,
             velocity.angular.z,
         );
-        position.rotation = ang * position.rotation;
+        /*
+        * float sql = angVel.SqL(); // squared magnitude
+
+        if (sql > FP_EPSILON2) 
+        {
+            float invOmegaMag = 1.0f / sqrt(sql);
+            sVec3 omegaAxis (angVel * invOmegaMag);
+            float omegaAngle = invOmegaMag * sql * timestep;
+            sQuat rotation; rotation.FromAxisAndAngle (omegaAxis, omegaAngle);
+            sQuat newOrn = rotation * orn;
+            newOrn.Normalize ();
+            return newOrn;
+        }
+        */
+
+        let sql = velocity.angular.length_squared();
+
+        if sql > std::f32::EPSILON {
+            let inv_omega_mag = 1.0 / sql.sqrt();
+            let omega_axis = velocity.angular * inv_omega_mag;
+            let omega_angle = inv_omega_mag * sql * TICK_RATE as f32;
+            let rotation = Quat::from_axis_angle(omega_axis, omega_angle);
+            let new_orn = rotation * position.rotation;
+            position.rotation = new_orn;
+        }
 
         impulse.linear = Vec3::ZERO;
         impulse.angular = Vec3::ZERO;
