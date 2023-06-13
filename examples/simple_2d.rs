@@ -1,8 +1,11 @@
+use std::time::Duration;
+
 use bevy::math::Vec3Swizzles;
 //use bevy::time::FixedTimestep;
 use bevy::{prelude::*, window::PresentMode};
+use bevy_framepace::{FramepaceSettings, Limiter};
 
-const TICK_RATE: f64 = 1.0 / 20.0;
+const TICK_RATE: f64 = 1.0 / 60.0;
 const VISUAL_SLOWDOWN: f64 = 1.0;
 
 fn main() {
@@ -11,6 +14,10 @@ fn main() {
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_editor_pls::EditorPlugin::new())
+        .insert_resource(FramepaceSettings {
+            limiter: Limiter::Manual(Duration::from_secs_f64(TICK_RATE)),
+            ..default()
+        })
         .add_startup_system(setup_graphics)
         .add_startup_system(setup_rope)
         .add_startup_system(setup_translation)

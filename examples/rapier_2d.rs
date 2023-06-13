@@ -14,6 +14,10 @@ fn main() {
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_editor_pls::EditorPlugin::new())
+        .insert_resource(bevy_framepace::FramepaceSettings {
+            limiter: bevy_framepace::Limiter::Manual(std::time::Duration::from_secs_f64(TICK_RATE)),
+            ..default()
+        })
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(10.0))
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_startup_system(setup_graphics)
@@ -39,7 +43,6 @@ pub struct Spring {
 #[derive(Default, Debug, Copy, Clone, Component, Reflect)]
 #[reflect(Component)]
 pub struct SpringSettings(springy::Spring);
-
 
 /*
 pub fn spring_impulse(
@@ -258,7 +261,6 @@ pub fn setup_physics(mut commands: Commands) {
 }
  */
 
-
 pub fn setup_translation(mut commands: Commands) {
     let size = 20.0;
     let sprite = Sprite {
@@ -336,7 +338,10 @@ pub fn setup_translation(mut commands: Commands) {
                 ReadMassProperties::default(),
                 //Collider::cuboid(size, size),
             ))
-            .insert(Name::new(format!("Slot {} (ratio {})", iteration, damp_ratio)));
+            .insert(Name::new(format!(
+                "Slot {} (ratio {})",
+                iteration, damp_ratio
+            )));
     }
 }
 
@@ -419,6 +424,9 @@ pub fn setup_rotation(mut commands: Commands) {
                 ReadMassProperties::default(),
                 //Collider::cuboid(size, size),
             ))
-            .insert(Name::new(format!("Rot Slot {} (ratio {})", iteration, damp_ratio)));
+            .insert(Name::new(format!(
+                "Rot Slot {} (ratio {})",
+                iteration, damp_ratio
+            )));
     }
 }

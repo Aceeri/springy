@@ -2,7 +2,7 @@ use bevy::math::Vec3Swizzles;
 use bevy::{prelude::*, window::PresentMode};
 use springy::kinematic::Kinematic;
 
-const TICK_RATE: f64 = 1.0 / 20.0;
+const TICK_RATE: f64 = 1.0 / 60.0;
 const VISUAL_SLOWDOWN: f64 = 1.0;
 
 fn main() {
@@ -11,6 +11,10 @@ fn main() {
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_editor_pls::EditorPlugin::new())
+        .insert_resource(bevy_framepace::FramepaceSettings {
+            limiter: bevy_framepace::Limiter::Manual(std::time::Duration::from_secs_f64(TICK_RATE)),
+            ..default()
+        })
         .add_startup_system(setup_graphics)
         //.add_startup_system(setup_rope)
         .add_startup_system(setup_translation)
@@ -137,7 +141,7 @@ pub fn symplectic_euler(
         /*
         * float sql = angVel.SqL(); // squared magnitude
 
-        if (sql > FP_EPSILON2) 
+        if (sql > FP_EPSILON2)
         {
             float invOmegaMag = 1.0f / sqrt(sql);
             sVec3 omegaAxis (angVel * invOmegaMag);
