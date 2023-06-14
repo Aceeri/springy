@@ -95,8 +95,8 @@ pub struct TranslationParticle3 {
 pub struct AngularParticle3 {
     /// Resistance the particle has to changes in angular motion.
     pub inertia: Vec3,
-    /// Current rotation of the particle.
-    pub rotation: Quat,
+    /// Current direction of the particle.
+    pub direction: Vec3,
     /// Current angular velocity of the particle.
     pub velocity: Vec3,
 }
@@ -157,9 +157,7 @@ impl AngularParticle3 {
     }
 
     pub fn instant(&self, other: &Self) -> SpringInstant<Vec3> {
-        let q1 = self.rotation * Vec3::X;
-        let q2 = other.rotation * Vec3::X;
-        let diff = q1.cross(q2);
+        let diff = self.direction.cross(other.direction);
         SpringInstant {
             reduced_inertia: self.reduced_inertia(other),
             displacement: diff,

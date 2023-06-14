@@ -134,14 +134,29 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
     }
 
     #[cfg(feature = "rapier3d")]
-    pub fn angular(&self) -> AngularParticle3 {
+    pub fn angular(&self, axis: Vec3) -> AngularParticle3 {
         let velocity = self.velocity();
         let mass = self.mass();
         let global = self.global_transform.compute_transform();
         AngularParticle3 {
-            rotation: global.rotation,
+            direction: global.rotation * axis,
             velocity: velocity.angvel,
             inertia: mass.principal_inertia,
         }
+    }
+
+    #[cfg(feature = "rapier3d")]
+    pub fn angular_x(&self) -> AngularParticle3 {
+        self.angular(Vec3::X)
+    }
+
+    #[cfg(feature = "rapier3d")]
+    pub fn angular_y(&self) -> AngularParticle3 {
+        self.angular(Vec3::Y)
+    }
+
+    #[cfg(feature = "rapier3d")]
+    pub fn angular_z(&self) -> AngularParticle3 {
+        self.angular(Vec3::Z)
     }
 }

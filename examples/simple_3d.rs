@@ -261,7 +261,7 @@ pub fn spring_impulse(
 
         let angular_particle_a = springy::AngularParticle3 {
             inertia: spring_mass.angular,
-            rotation: spring_rotation,
+            direction: spring_rotation * Vec3::X,
             velocity: spring_velocity.angular,
         };
 
@@ -275,7 +275,7 @@ pub fn spring_impulse(
 
         let angular_particle_b = springy::AngularParticle3 {
             inertia: particle_mass.angular,
-            rotation: particle_rotation,
+            direction: particle_rotation * Vec3::X,
             velocity: particle_velocity.angular,
         };
         let instant = particle_a.instant(&particle_b);
