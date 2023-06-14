@@ -186,7 +186,7 @@ impl Spring {
 
         let unit_vector = instant.displacement.normalize_or_zero();
         let distance_error = unit_vector * instant.displacement.length();
-        let velocity_error = unit_vector * instant.velocity.dot(unit_vector);
+        let velocity_error = instant.velocity;//.dot(unit_vector);
 
         let distance_impulse =
             distance_error * instant.reduced_inertia * self.strength() * inverse_timestep;
