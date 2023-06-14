@@ -40,8 +40,8 @@ fn main() {
         .insert_resource(Running(false))
         .add_startup_system(setup_graphics)
         //.add_startup_system(setup_rope)
-        //.add_startup_system(setup_translation)
-        //.add_startup_system(setup_rotational)
+        .add_startup_system(setup_translation)
+        .add_startup_system(setup_rotational)
         .add_startup_system(setup_rotation_test)
         .add_system(physics_step)
         .add_system(toggle_running)
@@ -427,7 +427,6 @@ fn setup_rotation_test(
             .insert(Name::new("Test Slot"));
 }
 
-/*
 pub fn setup_translation(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -480,6 +479,7 @@ pub fn setup_translation(
             .insert(Name::new(format!("Translational Slot {}", height)));
     }
 }
+
 pub fn setup_rotational(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -497,16 +497,18 @@ pub fn setup_rotational(
                 material: materials.add(Color::YELLOW.into()),
                 ..default()
             })
-            .insert(TransformBundle::from(Transform::from_xyz(
-                10.0, height, 10.0,
-            )))
+            .insert(TransformBundle::from(Transform {
+                translation: Vec3::new(10.0, height, 10.0),
+                rotation: Quat::from_euler(EulerRot::XYZ, damped as f32 / 10.0, damped as f32 / 20.0, damped as f32 / 30.0),
+                ..default()
+            }))
             .insert((
                 Velocity::default(),
                 Impulse::default(),
                 Inertia::default(),
                 PreviousUnitVector::default(),
             ))
-            .insert(Name::new(format!("Translational {}", height)))
+            .insert(Name::new(format!("Rotational {}", height)))
             .id();
 
         let critical_slot = commands
@@ -531,7 +533,6 @@ pub fn setup_rotational(
                 Inertia::INFINITY,
                 PreviousUnitVector::default(),
             ))
-            .insert(Name::new("Trans Critical Slot"));
+            .insert(Name::new("Rotational Slot"));
     }
 }
- */
