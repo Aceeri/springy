@@ -1,13 +1,35 @@
-use bevy::math::Vec3Swizzles;
-use bevy::{prelude::*, window::PresentMode};
+use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
 use springy::kinematic::Kinematic;
 
 const TICK_RATE: f64 = 1.0 / 60.0;
 const VISUAL_SLOWDOWN: f64 = 1.0;
 
+#[derive(ScheduleLabel, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
+pub struct PhysicsSchedule;
+
+
+#[derive(Resource, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
+pub struct Running(pub bool);
+
+pub fn physics_step(world: &mut World) {
+    let running = world.resource::<Running>();
+    let input = world.resource::<Input<KeyCode>>();
+
+    if running.0 || input.just_pressed(KeyCode::I) {
+        world.run_schedule(PhysicsSchedule);
+    }
+}
+
+pub fn toggle_running(mut running: ResMut<Running>, input: Res<Input<KeyCode>>) {
+    if input.just_pressed(KeyCode::P) {
+        running.0 = !running.0;
+    }
+}
+
 fn main() {
-    App::new()
-        .insert_resource(ClearColor(Color::DARK_GRAY))
+    let mut app = App::new();
+
+    app.insert_resource(ClearColor(Color::DARK_GRAY))
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_editor_pls::EditorPlugin::new())
@@ -15,21 +37,29 @@ fn main() {
             limiter: bevy_framepace::Limiter::Manual(std::time::Duration::from_secs_f64(TICK_RATE)),
             ..default()
         })
+        .insert_resource(Running(false))
         .add_startup_system(setup_graphics)
         //.add_startup_system(setup_rope)
-        .add_startup_system(setup_translation)
-        .add_startup_system(setup_rotational)
-        .add_systems((
-            symplectic_euler,
-            spring_impulse.before(symplectic_euler),
-            gravity.before(symplectic_euler),
-        ))
+        //.add_startup_system(setup_translation)
+        //.add_startup_system(setup_rotational)
+        .add_startup_system(setup_rotation_test)
+        .add_system(physics_step)
+        .add_system(toggle_running)
         .register_type::<Impulse>()
         .register_type::<Gravity>()
         .register_type::<Inertia>()
         .register_type::<Velocity>()
-        .register_type::<SpringSettings>()
-        .run();
+        .register_type::<SpringSettings>();
+
+    app.init_schedule(PhysicsSchedule);
+    let physics_schedule = app.get_schedule_mut(PhysicsSchedule).unwrap();
+    physics_schedule.add_systems((
+        symplectic_euler,
+        spring_impulse.before(symplectic_euler),
+        gravity.before(symplectic_euler),
+    ));
+
+    app.run();
 }
 
 fn setup_graphics(
@@ -252,7 +282,7 @@ pub fn spring_impulse(
         let impulse = spring_settings.0.impulse(timestep, instant);
 
         let angular_instant = angular_particle_a.instant(&angular_particle_b);
-        let angular_impulse = spring_settings.0.impulse(timestep, angular_instant);
+        let angular_impulse = -spring_settings.0.impulse(timestep, angular_instant);
         let [mut spring_impulse, mut particle_impulse] = impulses
             .get_many_mut([spring_entity, particle_entity])
             .unwrap();
@@ -349,6 +379,55 @@ fn setup_rope(
         .insert(Name::new("Cube Slot"));
 }
 
+fn setup_rotation_test(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+        let damped_cube = commands
+            .spawn(PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
+                material: materials.add(Color::YELLOW.into()),
+                ..default()
+            })
+            .insert(TransformBundle::from(Transform::from_xyz(
+                0.0, 1.0, 0.0,
+            )))
+            .insert((
+                Velocity::default(),
+                Impulse::default(),
+                Inertia::default(),
+                PreviousUnitVector::default(),
+            ))
+            .insert(Name::new("Test"))
+            .id();
+
+        let critical_slot = commands
+            .spawn(PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.01 })),
+                material: materials.add(Color::RED.into()),
+                ..default()
+            })
+            .insert(TransformBundle::from(Transform::from_xyz(
+                0.0, 1.0, 0.0,
+            )))
+            .insert(Spring {
+                containing: damped_cube,
+            })
+            .insert(SpringSettings(springy::Spring {
+                strength: 1.0,
+                damp_ratio: 0.0,
+            }))
+            .insert((
+                Velocity::default(),
+                Impulse::default(),
+                Inertia::INFINITY,
+                PreviousUnitVector::default(),
+            ))
+            .insert(Name::new("Test Slot"));
+}
+
+/*
 pub fn setup_translation(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -401,7 +480,6 @@ pub fn setup_translation(
             .insert(Name::new(format!("Translational Slot {}", height)));
     }
 }
-
 pub fn setup_rotational(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -456,3 +534,4 @@ pub fn setup_rotational(
             .insert(Name::new("Trans Critical Slot"));
     }
 }
+ */
