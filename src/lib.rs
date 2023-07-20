@@ -1,6 +1,6 @@
 use bevy::{
     prelude::*,
-    reflect::{FromReflect, Reflect},
+    reflect::{ Reflect},
 };
 use bevy_inspector_egui::prelude::*;
 
@@ -19,7 +19,7 @@ pub use rapier::RapierParticleQuery;
 pub mod kinematic;
 use kinematic::*;
 
-#[derive(Default, Debug, Copy, Clone, Component, Reflect, FromReflect, InspectorOptions)]
+#[derive(Default, Debug, Copy, Clone, Component, Reflect, InspectorOptions)]
 #[reflect(Component, InspectorOptions)]
 pub struct Spring {
     /// Strength of the spring-like impulse. This is a range between 0 and 1

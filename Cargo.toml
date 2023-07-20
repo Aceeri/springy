@@ -19,15 +19,15 @@ rapier3d = [
 ]
 
 [dependencies]
-bevy = {version = "0.10", default-features = false}
-bevy-inspector-egui = "0.18"
-bevy_rapier2d = {version = "0.21", optional = true}
-bevy_rapier3d = {version = "0.21", optional = true}
-bevy_framepace = "0.12"
+bevy = {version = "0.11", default-features = false}
+bevy-inspector-egui = "0.19"
+bevy_rapier2d = {version = "0.22", optional = true}
+bevy_rapier3d = {version = "0.22", optional = true}
+#bevy_framepace = "0.12"
 
 [dev-dependencies]
-bevy = {version = "0.10", default-features = true}
-bevy_editor_pls = "0.4"
+bevy = {version = "0.11", default-features = true}
+#bevy_editor_pls = "0.4"
 
 [profile.dev]
 opt-level = 1

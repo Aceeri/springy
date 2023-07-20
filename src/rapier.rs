@@ -5,7 +5,6 @@ use bevy_rapier2d::prelude::*;
 use bevy_rapier3d::prelude::*;
 
 use bevy::ecs::query::WorldQuery;
-use bevy::math::Vec3Swizzles;
 
 use crate::*;
 
