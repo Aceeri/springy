@@ -5,6 +5,7 @@ use bevy_rapier2d::prelude::*;
 use bevy_rapier3d::prelude::*;
 
 use bevy::ecs::query::WorldQuery;
+use bevy::math::Vec3Swizzles;
 
 use crate::*;
 
@@ -75,14 +76,14 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
                 | RigidBody::KinematicPositionBased
                 | RigidBody::Fixed,
             ) => {
-                prop.mass = f32::INFINITY;
+                prop.mass = 0.0;
                 #[cfg(feature = "rapier2d")]
                 {
-                    prop.principal_inertia = f32::INFINITY;
+                    prop.principal_inertia = 0.0;
                 }
                 #[cfg(feature = "rapier3d")]
                 {
-                    prop.principal_inertia = Unit::splat(f32::INFINITY);
+                    prop.principal_inertia = Unit::splat(0.0);
                 }
             }
             _ => {}

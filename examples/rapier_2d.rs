@@ -13,16 +13,17 @@ fn main() {
         )))
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
-        .add_plugin(bevy_editor_pls::EditorPlugin::new())
+        //.add_plugin(bevy_editor_pls::EditorPlugin::new())
+        .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
         .insert_resource(bevy_framepace::FramepaceSettings {
-            limiter: bevy_framepace::Limiter::Manual(std::time::Duration::from_secs_f64(TICK_RATE)),
+            limiter: bevy_framepace::Limiter::Manual(std::time::Duration::from_secs_f64(TICK_RATE as f64)),
             ..default()
         })
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(10.0))
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_startup_system(setup_graphics)
-        //.add_startup_system(setup_translation)
-        .add_startup_system(setup_rotation)
+        .add_startup_system(setup_translation)
+        //.add_startup_system(setup_rotation)
         .add_system(spring_impulse)
         .register_type::<SpringSettings>()
         .run();
@@ -30,9 +31,13 @@ fn main() {
 
 fn setup_graphics(mut commands: Commands) {
     commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(-100.0, 100.0, 0.0),
+        camera: Camera {
+            is_active: true,
+            ..default()
+        },
+        transform: Transform::from_xyz(0.0, 300.0, 5.0),
         ..default()
-    });
+    }).insert(Name::new("Camera"));
 }
 
 #[derive(Debug, Copy, Clone, Component)]

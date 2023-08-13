@@ -32,7 +32,8 @@ fn main() {
     app.insert_resource(ClearColor(Color::DARK_GRAY))
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
-        .add_plugin(bevy_editor_pls::EditorPlugin::new())
+        //.add_plugin(bevy_editor_pls::EditorPlugin::new())
+        .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
         .insert_resource(bevy_framepace::FramepaceSettings {
             limiter: bevy_framepace::Limiter::Manual(std::time::Duration::from_secs_f64(TICK_RATE)),
             ..default()
@@ -51,9 +52,7 @@ fn main() {
         .register_type::<Velocity>()
         .register_type::<SpringSettings>();
 
-    app.init_schedule(PhysicsSchedule);
-    let physics_schedule = app.get_schedule_mut(PhysicsSchedule).unwrap();
-    physics_schedule.add_systems((
+    app.add_systems(PostUpdate, (
         symplectic_euler,
         spring_impulse.before(symplectic_euler),
         gravity.before(symplectic_euler),

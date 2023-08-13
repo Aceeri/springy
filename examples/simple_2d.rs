@@ -13,7 +13,8 @@ fn main() {
         .insert_resource(ClearColor(Color::DARK_GRAY))
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
-        .add_plugin(bevy_editor_pls::EditorPlugin::new())
+        //.add_plugin(bevy_editor_pls::EditorPlugin::new())
+        .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
         .insert_resource(FramepaceSettings {
             limiter: Limiter::Manual(Duration::from_secs_f64(TICK_RATE)),
             ..default()
@@ -22,7 +23,7 @@ fn main() {
         .add_startup_system(setup_rope)
         .add_startup_system(setup_translation)
         .add_startup_system(setup_rotational)
-        .add_systems((
+        .add_systems(PostUpdate, (
             symplectic_euler,
             spring_impulse.before(symplectic_euler),
             gravity.before(symplectic_euler),
@@ -37,9 +38,13 @@ fn main() {
 
 fn setup_graphics(mut commands: Commands) {
     commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(0.0, 300.0, 0.0),
+        camera: Camera {
+            is_active: true,
+            ..default()
+        },
+        transform: Transform::from_xyz(0.0, 300.0, 5.0),
         ..default()
-    });
+    }).insert(Name::new("Camera"));
 }
 
 #[derive(Debug, Copy, Clone, Component)]
@@ -128,7 +133,7 @@ pub fn symplectic_euler(
         velocity.angular += impulse.angular * inertia.inverse_angular();
 
         position.translation += velocity.linear.extend(0.0) * TICK_RATE as f32;
-        position.rotate_z(velocity.angular * TICK_RATE as f32);
+        //position.rotate_z(velocity.angular * TICK_RATE as f32);
 
         impulse.linear = Vec2::ZERO;
         impulse.angular = 0.0;
