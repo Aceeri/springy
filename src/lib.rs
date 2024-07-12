@@ -157,10 +157,11 @@ impl AngularParticle3 {
     }
 
     pub fn instant(&self, other: &Self) -> SpringInstant<Vec3> {
-        let diff = self.direction.cross(other.direction);
+        let angle = self.direction.angle_between(other.direction);
+        let axis = self.direction.cross(other.direction).normalize_or_zero();
         SpringInstant {
             reduced_inertia: self.reduced_inertia(other),
-            displacement: diff,
+            displacement: axis * angle,
             velocity: other.velocity - self.velocity,
         }
     }

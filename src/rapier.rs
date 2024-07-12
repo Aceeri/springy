@@ -54,7 +54,7 @@ impl<'w, 's> RapierParticleQueryItem<'w, 's> {
 
     pub fn mass(&self) -> MassProperties {
         let mut prop = match self.mass {
-            Some(mass) => mass.0,
+            Some(mass) => mass.get().clone(),
             None => {
                 match self.rigid_body {
                     Some(RigidBody::KinematicVelocityBased | RigidBody::Dynamic) => {
