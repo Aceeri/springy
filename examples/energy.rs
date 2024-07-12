@@ -1,5 +1,5 @@
 use bevy::math::Vec3Swizzles;
-use bevy::{prelude::*, window::PresentMode};
+use bevy::{prelude::*, color::palettes::css};
 
 const TICK_RATE: f64 = 1.0 / 60.0;
 const VISUAL_SLOWDOWN: f64 = 1.0;
@@ -7,18 +7,16 @@ const MIN_DAMP_RATIO: f32 = 0.00055;
 
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::DARK_GRAY))
+        .insert_resource(ClearColor(css::DARK_GRAY.into()))
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
-        .add_plugin(bevy_editor_pls::EditorPlugin)
-        .add_startup_system(setup_graphics)
-        .add_startup_system(setup)
-        .add_system_set(
-            SystemSet::new()
-                //.with_run_criteria(FixedTimestep::step(TICK_RATE * VISUAL_SLOWDOWN))
-                .with_system(symplectic_euler)
-                .with_system(spring_impulse.before(symplectic_euler))
-                .with_system(gravity.before(symplectic_euler)),
+        //.add_plugins(bevy_editor_pls::EditorPlugin)
+        .add_systems(Startup, (setup, setup_graphics))
+        .add_systems(
+            Update,
+                (spring_impulse,
+                gravity,
+                symplectic_euler,).chain()
         )
         .register_type::<Impulse>()
         .register_type::<Gravity>()
@@ -178,19 +176,21 @@ pub fn spring_impulse(
 pub fn setup(mut commands: Commands) {
     let size = 10.0;
     let sprite = Sprite {
-        color: Color::BLUE,
+        color: css::BLUE.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size, size)),
         anchor: Default::default(),
+        ..default()
     };
 
     let slot = Sprite {
-        color: Color::RED,
+        color: css::RED.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size, size)),
         anchor: Default::default(),
+        ..default()
     };
 
     let slot_location = Vec3::new(50.0, 50.0, 0.0);

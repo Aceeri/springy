@@ -1,4 +1,4 @@
-use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
+use bevy::{ecs::schedule::ScheduleLabel, prelude::*, color::palettes::css};
 use springy::kinematic::Kinematic;
 
 const TICK_RATE: f64 = 1.0 / 60.0;
@@ -13,15 +13,15 @@ pub struct Running(pub bool);
 
 pub fn physics_step(world: &mut World) {
     let running = world.resource::<Running>();
-    let input = world.resource::<Input<KeyCode>>();
+    let input = world.resource::<ButtonInput<KeyCode>>();
 
-    if running.0 || input.just_pressed(KeyCode::I) {
+    if running.0 || input.just_pressed(KeyCode::KeyI) {
         world.run_schedule(PhysicsSchedule);
     }
 }
 
-pub fn toggle_running(mut running: ResMut<Running>, input: Res<Input<KeyCode>>) {
-    if input.just_pressed(KeyCode::P) {
+pub fn toggle_running(mut running: ResMut<Running>, input: Res<ButtonInput<KeyCode>>) {
+    if input.just_pressed(KeyCode::KeyP) {
         running.0 = !running.0;
     }
 }
@@ -29,23 +29,23 @@ pub fn toggle_running(mut running: ResMut<Running>, input: Res<Input<KeyCode>>) 
 fn main() {
     let mut app = App::new();
 
-    app.insert_resource(ClearColor(Color::DARK_GRAY))
+    app.insert_resource(ClearColor(css::DARK_GRAY.into()))
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
         //.add_plugin(bevy_editor_pls::EditorPlugin::new())
-        .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
+        .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
         .insert_resource(bevy_framepace::FramepaceSettings {
             limiter: bevy_framepace::Limiter::Manual(std::time::Duration::from_secs_f64(TICK_RATE)),
             ..default()
         })
         .insert_resource(Running(false))
-        .add_startup_system(setup_graphics)
-        //.add_startup_system(setup_rope)
-        .add_startup_system(setup_translation)
-        .add_startup_system(setup_rotational)
-        .add_startup_system(setup_rotation_test)
-        .add_system(physics_step)
-        .add_system(toggle_running)
+        .add_systems(Startup, (setup_graphics,
+        //setup_rope,
+        setup_translation,
+        setup_rotational,
+        setup_rotation_test,))
+        .add_systems(Update, physics_step)
+        .add_systems(PreUpdate, toggle_running)
         .register_type::<Impulse>()
         .register_type::<Gravity>()
         .register_type::<Inertia>()
@@ -67,8 +67,8 @@ fn setup_graphics(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn(PbrBundle {
-        mesh: meshes.add(shape::Plane::from_size(5.0).into()),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        mesh: meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(5.0))),
+        material: materials.add(Color::from(Srgba::rgb(0.3, 0.5, 0.3))),
         ..default()
     });
     commands.spawn(Camera3dBundle {
@@ -275,8 +275,8 @@ fn setup_rope(
 ) {
     let cube_3 = commands
         .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-            material: materials.add(Color::BLUE.into()),
+            mesh: meshes.add(Mesh::from(Cuboid { half_size: Vec3::splat(0.5), })),
+            material: materials.add(Color::from(css::BLUE)),
             ..default()
         })
         .insert((
@@ -291,8 +291,8 @@ fn setup_rope(
 
     let cube_2 = commands
         .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-            material: materials.add(Color::BLUE.into()),
+            mesh: meshes.add(Mesh::from(Cuboid { half_size: Vec3::splat(0.5), })),
+            material: materials.add(Color::from(css::BLUE)),
             ..default()
         })
         .insert((
@@ -312,8 +312,8 @@ fn setup_rope(
 
     let cube_1 = commands
         .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-            material: materials.add(Color::BLUE.into()),
+            mesh: meshes.add(Mesh::from(Cuboid { half_size: Vec3::splat(0.5) })),
+            material: materials.add(Color::from(css::BLUE)),
             ..default()
         })
         .insert(TransformBundle::from(Transform::from_xyz(50.0, 50.0, 0.0)))
@@ -334,8 +334,8 @@ fn setup_rope(
 
     let cube_slot = commands
         .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-            material: materials.add(Color::RED.into()),
+            mesh: meshes.add(Mesh::from(Cuboid { half_size: Vec3::splat(0.5) })),
+            material: materials.add(Color::from(css::RED)),
             ..default()
         })
         .insert(TransformBundle::from(Transform::from_xyz(-3.0, 5.0, -3.0)))
@@ -360,8 +360,8 @@ fn setup_rotation_test(
 ) {
         let damped_cube = commands
             .spawn(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-                material: materials.add(Color::YELLOW.into()),
+                mesh: meshes.add(Mesh::from(Cuboid { half_size: Vec3::splat(0.5) })),
+                material: materials.add(Color::from(css::YELLOW)),
                 ..default()
             })
             .insert(TransformBundle::from(Transform::from_xyz(
@@ -378,8 +378,8 @@ fn setup_rotation_test(
 
         let critical_slot = commands
             .spawn(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.01 })),
-                material: materials.add(Color::RED.into()),
+                mesh: meshes.add(Mesh::from(Cuboid { half_size: Vec3::splat(0.01) })),
+                material: materials.add(Color::from(css::RED)),
                 ..default()
             })
             .insert(TransformBundle::from(Transform::from_xyz(
@@ -414,8 +414,8 @@ pub fn setup_translation(
         let height = damped as f32 * size;
         let damped_cube = commands
             .spawn(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: size })),
-                material: materials.add(Color::YELLOW.into()),
+                mesh: meshes.add(Mesh::from(Cuboid { half_size: Vec3::splat(size) })),
+                material: materials.add(Color::from(css::YELLOW)),
                 ..default()
             })
             .insert(TransformBundle::from(Transform::from_xyz(
@@ -432,8 +432,8 @@ pub fn setup_translation(
 
         let critical_slot = commands
             .spawn(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.01 })),
-                material: materials.add(Color::RED.into()),
+                mesh: meshes.add(Mesh::from(Cuboid { half_size: Vec3::splat(0.01) })),
+                material: materials.add(Color::from(css::RED)),
                 ..default()
             })
             .insert(TransformBundle::from(Transform::from_xyz(0.0, height, 0.0)))
@@ -467,8 +467,8 @@ pub fn setup_rotational(
         let height = damped as f32 * size;
         let damped_cube = commands
             .spawn(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: size })),
-                material: materials.add(Color::YELLOW.into()),
+                mesh: meshes.add(Mesh::from(Cuboid { half_size: Vec3::splat(size / 2.0), })),
+                material: materials.add(Color::from(css::YELLOW)),
                 ..default()
             })
             .insert(TransformBundle::from(Transform {
@@ -487,8 +487,8 @@ pub fn setup_rotational(
 
         let critical_slot = commands
             .spawn(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.01 })),
-                material: materials.add(Color::RED.into()),
+                mesh: meshes.add(Mesh::from(Cuboid { half_size: Vec3::splat(0.01), })),
+                material: materials.add(Color::from(css::RED)),
                 ..default()
             })
             .insert(TransformBundle::from(Transform::from_xyz(

@@ -1,43 +1,50 @@
 use bevy::math::Vec3Swizzles;
-use bevy::{prelude::*, window::PresentMode};
+use bevy::{color::palettes::css, prelude::*, window::PresentMode};
 use bevy_rapier2d::prelude::*;
 
 const TICK_RATE: f32 = 1.0 / 100.0;
 
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::rgb(
-            0xF9 as f32 / 255.0,
-            0xF9 as f32 / 255.0,
-            0xFF as f32 / 255.0,
-        )))
+        .insert_resource(ClearColor(
+            Srgba::rgb(
+                0xF9 as f32 / 255.0,
+                0xF9 as f32 / 255.0,
+                0xFF as f32 / 255.0,
+            )
+            .into(),
+        ))
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
         //.add_plugin(bevy_editor_pls::EditorPlugin::new())
-        .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
+        .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
         .insert_resource(bevy_framepace::FramepaceSettings {
-            limiter: bevy_framepace::Limiter::Manual(std::time::Duration::from_secs_f64(TICK_RATE as f64)),
+            limiter: bevy_framepace::Limiter::Manual(std::time::Duration::from_secs_f64(
+                TICK_RATE as f64,
+            )),
             ..default()
         })
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(10.0))
-        .add_plugin(RapierDebugRenderPlugin::default())
-        .add_startup_system(setup_graphics)
-        .add_startup_system(setup_translation)
-        //.add_startup_system(setup_rotation)
-        .add_system(spring_impulse)
+        .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(10.0))
+        .add_plugins(RapierDebugRenderPlugin::default())
+        .add_systems(Startup, setup_graphics)
+        .add_systems(Startup, setup_translation)
+        //.add_systems(Startup, setup_rotation)
+        .add_systems(Update, spring_impulse)
         .register_type::<SpringSettings>()
         .run();
 }
 
 fn setup_graphics(mut commands: Commands) {
-    commands.spawn(Camera2dBundle {
-        camera: Camera {
-            is_active: true,
+    commands
+        .spawn(Camera2dBundle {
+            camera: Camera {
+                is_active: true,
+                ..default()
+            },
+            transform: Transform::from_xyz(0.0, 300.0, 5.0),
             ..default()
-        },
-        transform: Transform::from_xyz(0.0, 300.0, 5.0),
-        ..default()
-    }).insert(Name::new("Camera"));
+        })
+        .insert(Name::new("Camera"));
 }
 
 #[derive(Debug, Copy, Clone, Component)]
@@ -200,7 +207,7 @@ pub fn setup_physics(mut commands: Commands) {
      */
     let size = 20.0;
     let sprite = Sprite {
-        color: Color::BLUE,
+        color: css::BLUE.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size, size)),
@@ -209,7 +216,7 @@ pub fn setup_physics(mut commands: Commands) {
     };
 
     let slot = Sprite {
-        color: Color::RED,
+        color: css::RED.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size / 4.0, size / 4.0)),
@@ -269,7 +276,7 @@ pub fn setup_physics(mut commands: Commands) {
 pub fn setup_translation(mut commands: Commands) {
     let size = 20.0;
     let sprite = Sprite {
-        color: Color::BLUE,
+        color: css::BLUE.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size, size)),
@@ -278,7 +285,7 @@ pub fn setup_translation(mut commands: Commands) {
     };
 
     let slot = Sprite {
-        color: Color::RED,
+        color: css::RED.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size / 4.0, size / 4.0)),
@@ -293,7 +300,7 @@ pub fn setup_translation(mut commands: Commands) {
 
     for iteration in 0..iterations {
         let damped_sprite = Sprite {
-            color: Color::YELLOW,
+            color: css::YELLOW.into(),
             flip_x: false,
             flip_y: false,
             custom_size: Some(Vec2::new(size, size)),
@@ -353,7 +360,7 @@ pub fn setup_translation(mut commands: Commands) {
 pub fn setup_rotation(mut commands: Commands) {
     let size = 20.0;
     let sprite = Sprite {
-        color: Color::BLUE,
+        color: css::BLUE.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size, size)),
@@ -362,7 +369,7 @@ pub fn setup_rotation(mut commands: Commands) {
     };
 
     let slot = Sprite {
-        color: Color::RED,
+        color: css::RED.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size / 4.0, size / 4.0)),
@@ -377,7 +384,7 @@ pub fn setup_rotation(mut commands: Commands) {
 
     for iteration in 0..iterations {
         let damped_sprite = Sprite {
-            color: Color::YELLOW,
+            color: css::YELLOW.into(),
             flip_x: false,
             flip_y: false,
             custom_size: Some(Vec2::new(size, size)),

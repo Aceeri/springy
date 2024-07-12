@@ -4,12 +4,12 @@ use bevy_rapier2d::prelude::*;
 #[cfg(feature = "rapier3d")]
 use bevy_rapier3d::prelude::*;
 
-use bevy::ecs::query::WorldQuery;
+use bevy::ecs::query::{QueryData, WorldQuery};
 use bevy::math::Vec3Swizzles;
 
 use crate::*;
 
-#[derive(WorldQuery)]
+#[derive(QueryData)]
 pub struct RapierParticleQuery<'a> {
     pub entity: Entity,
     pub global_transform: &'a GlobalTransform,

@@ -1,8 +1,8 @@
 use bevy::{
     prelude::*,
-    reflect::{FromReflect, Reflect},
+    reflect::Reflect,
 };
-use bevy_inspector_egui::prelude::*;
+//use bevy_inspector_egui::prelude::*;
 
 pub trait Kinematic:
     std::ops::Sub<Self, Output = Self>

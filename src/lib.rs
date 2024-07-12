@@ -2,7 +2,7 @@ use bevy::{
     prelude::*,
     reflect::{ Reflect},
 };
-use bevy_inspector_egui::prelude::*;
+//use bevy_inspector_egui::prelude::*;
 
 pub mod prelude {
     #[cfg(any(feature = "rapier2d", feature = "rapier3d"))]
@@ -19,12 +19,12 @@ pub use rapier::RapierParticleQuery;
 pub mod kinematic;
 use kinematic::*;
 
-#[derive(Default, Debug, Copy, Clone, Component, Reflect, InspectorOptions)]
-#[reflect(Component, InspectorOptions)]
+#[derive(Default, Debug, Copy, Clone, Component, Reflect)]
+#[reflect(Component)]
 pub struct Spring {
     /// Strength of the spring-like impulse. This is a range between 0 and 1
     /// where 1 will bring the spring to equilibrium in 1 timestep.
-    #[inspector(min = 0.0, max = 1.0, speed = 0.01)]
+    //#[inspector(min = 0.0, max = 1.0, speed = 0.01)]
     pub strength: f32,
     /// Damping of the spring-like impulse. <1 will be treated as under-dampened
     /// and will overshoot the target, >=1 will be treated as critically dampened
@@ -32,7 +32,7 @@ pub struct Spring {
     ///
     /// Note this will not be completely respected to avoid instability in the spring.
     /// So overshooting *may* happen if you have a really high strength value.
-    #[inspector(min = 0.0, max = 4.0, speed = 0.05)]
+    //#[inspector(min = 0.0, max = 4.0, speed = 0.05)]
     pub damp_ratio: f32,
 }
 

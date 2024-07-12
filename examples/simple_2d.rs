@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bevy::math::Vec3Swizzles;
 //use bevy::time::FixedTimestep;
-use bevy::{prelude::*, window::PresentMode};
+use bevy::{prelude::*, color::palettes::css};
 use bevy_framepace::{FramepaceSettings, Limiter};
 
 const TICK_RATE: f64 = 1.0 / 60.0;
@@ -10,24 +10,26 @@ const VISUAL_SLOWDOWN: f64 = 1.0;
 
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::DARK_GRAY))
+        .insert_resource(ClearColor(css::DARK_GRAY.into()))
         .insert_resource(Msaa::default())
         .add_plugins(DefaultPlugins)
         //.add_plugin(bevy_editor_pls::EditorPlugin::new())
-        .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
+        .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
         .insert_resource(FramepaceSettings {
             limiter: Limiter::Manual(Duration::from_secs_f64(TICK_RATE)),
             ..default()
         })
-        .add_startup_system(setup_graphics)
-        .add_startup_system(setup_rope)
-        .add_startup_system(setup_translation)
-        .add_startup_system(setup_rotational)
+        .add_systems(Startup,
+        (setup_graphics,
+        setup_rope,
+        setup_translation,
+        setup_rotational,)
+        )
         .add_systems(PostUpdate, (
+            spring_impulse,
+            gravity,
             symplectic_euler,
-            spring_impulse.before(symplectic_euler),
-            gravity.before(symplectic_euler),
-        ))
+        ).chain())
         .register_type::<Impulse>()
         .register_type::<Gravity>()
         .register_type::<Inertia>()
@@ -242,7 +244,7 @@ pub fn spring_impulse(
 pub fn setup_rope(mut commands: Commands) {
     let size = 20.0;
     let sprite = Sprite {
-        color: Color::BLUE,
+        color: css::BLUE.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size, size)),
@@ -251,7 +253,7 @@ pub fn setup_rope(mut commands: Commands) {
     };
 
     let slot = Sprite {
-        color: Color::RED,
+        color: css::RED.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size / 4.0, size / 4.0)),
@@ -338,7 +340,7 @@ pub fn setup_rope(mut commands: Commands) {
 pub fn setup_translation(mut commands: Commands) {
     let size = 20.0;
     let sprite = Sprite {
-        color: Color::BLUE,
+        color: css::BLUE.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size, size)),
@@ -347,7 +349,7 @@ pub fn setup_translation(mut commands: Commands) {
     };
 
     let slot = Sprite {
-        color: Color::RED,
+        color: css::RED.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size / 4.0, size / 4.0)),
@@ -360,7 +362,7 @@ pub fn setup_translation(mut commands: Commands) {
     for damped in 0..iterations {
         let size = height / iterations as f32;
         let damped_sprite = Sprite {
-            color: Color::YELLOW,
+            color: css::YELLOW.into(),
             flip_x: false,
             flip_y: false,
             custom_size: Some(Vec2::new(5.0, size)),
@@ -414,7 +416,7 @@ pub fn setup_translation(mut commands: Commands) {
 pub fn setup_rotational(mut commands: Commands) {
     let size = 20.0;
     let sprite = Sprite {
-        color: Color::BLUE,
+        color: css::BLUE.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size, size)),
@@ -423,7 +425,7 @@ pub fn setup_rotational(mut commands: Commands) {
     };
 
     let slot = Sprite {
-        color: Color::RED,
+        color: css::RED.into(),
         flip_x: false,
         flip_y: false,
         custom_size: Some(Vec2::new(size / 4.0, size / 4.0)),
@@ -436,7 +438,7 @@ pub fn setup_rotational(mut commands: Commands) {
     for damped in 0..iterations {
         let size = height / iterations as f32;
         let damped_sprite = Sprite {
-            color: Color::YELLOW,
+            color: css::YELLOW.into(),
             flip_x: false,
             flip_y: false,
             custom_size: Some(Vec2::new(5.0, size)),
